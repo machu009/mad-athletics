@@ -18,6 +18,11 @@ export default async function NewTeamPage({
     redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   }
 
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, name, slug')
+    .order('name', { ascending: true });
+
   return (
     <div className="mx-auto max-w-md px-6 py-16">
       <h1
@@ -27,9 +32,9 @@ export default async function NewTeamPage({
         Set up your team
       </h1>
       <p className="mt-2 text-sm text-[#9AA1B5]">
-        Takes a minute. You can add a league later.
+        Takes a minute. You can skip the league for now and add it later.
       </p>
-      <NewTeamForm defaultSport={sport} />
+      <NewTeamForm defaultSport={sport} leagues={leagues ?? []} />
     </div>
   );
 }

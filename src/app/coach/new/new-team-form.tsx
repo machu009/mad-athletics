@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -14,6 +14,9 @@ const sports = [
   'Golf',
 ];
 
+type League = { id: string; name: string; slug: string };
+type Division = { id: string; name: string };
+
 function slugify(...parts: string[]) {
   return parts
     .join('-')
@@ -24,8 +27,10 @@ function slugify(...parts: string[]) {
 
 export default function NewTeamForm({
   defaultSport,
+  leagues,
 }: {
   defaultSport?: string;
+  leagues: League[];
 }) {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -34,35 +39,116 @@ export default function NewTeamForm({
     sports.find((s) => s.toLowerCase() === defaultSport?.toLowerCase()) ??
       sports[0]
   );
+
+  const [leagueMode, setLeagueMode] = useState<'none' | 'existing' | 'new'>(
+    'none'
+  );
+  const [selectedLeagueId, setSelectedLeagueId] = useState('');
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [divisionMode, setDivisionMode] = useState<'existing' | 'new'>(
+    'existing'
+  );
+  const [selectedDivisionId, setSelectedDivisionId] = useState('');
+  const [newDivisionName, setNewDivisionName] = useState('');
+
+  const [newLeagueName, setNewLeagueName] = useState('');
+  const [newLeagueType, setNewLeagueType] = useState<'school' | 'club'>(
+    'club'
+  );
+  const [newLeagueLocation, setNewLeagueLocation] = useState('');
+
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (leagueMode !== 'existing' || !selectedLeagueId) {
+      setDivisions([]);
+      setSelectedDivisionId('');
+      return;
+    }
+    const supabase = createClient();
+    supabase
+      .from('divisions')
+      .select('id, name')
+      .eq('league_id', selectedLeagueId)
+      .then(({ data }) => setDivisions(data ?? []));
+  }, [leagueMode, selectedLeagueId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus('saving');
     setErrorMsg('');
 
-    const slug = slugify(name, location);
     const supabase = createClient();
+    let divisionId: string | null = null;
 
-    const { error } = await supabase.rpc('create_team', {
-      p_name: name,
-      p_slug: slug,
-      p_location: location || null,
-      p_sport: sport.toLowerCase(),
-    });
+    try {
+      if (leagueMode === 'new') {
+        const leagueSlug = slugify(newLeagueName, newLeagueLocation);
+        const { data: newLeagueId, error: leagueError } = await supabase.rpc(
+          'create_league',
+          {
+            p_name: newLeagueName,
+            p_slug: leagueSlug,
+            p_league_type: newLeagueType,
+            p_location: newLeagueLocation || null,
+          }
+        );
+        if (leagueError || !newLeagueId) {
+          throw new Error('Could not create the league. Try again.');
+        }
 
-    if (error) {
+        const { data: newDivision, error: divisionError } = await supabase
+          .from('divisions')
+          .insert({ league_id: newLeagueId, name: newDivisionName })
+          .select('id')
+          .single();
+        if (divisionError || !newDivision) {
+          throw new Error('Could not create the division. Try again.');
+        }
+        divisionId = newDivision.id;
+      } else if (leagueMode === 'existing' && selectedLeagueId) {
+        if (divisionMode === 'new') {
+          const { data: newDivision, error: divisionError } = await supabase
+            .from('divisions')
+            .insert({ league_id: selectedLeagueId, name: newDivisionName })
+            .select('id')
+            .single();
+          if (divisionError || !newDivision) {
+            throw new Error(
+              "Only that league's admin can add a new division — pick an existing one or contact them."
+            );
+          }
+          divisionId = newDivision.id;
+        } else {
+          divisionId = selectedDivisionId || null;
+        }
+      }
+
+      const slug = slugify(name, location);
+      const { error: teamError } = await supabase.rpc('create_team', {
+        p_name: name,
+        p_slug: slug,
+        p_location: location || null,
+        p_sport: sport.toLowerCase(),
+        p_division_id: divisionId,
+      });
+
+      if (teamError) {
+        throw new Error(
+          teamError.message.includes('duplicate')
+            ? 'That team URL is already taken — try adding more location detail.'
+            : 'Something went wrong creating the team. Try again.'
+        );
+      }
+
+      router.push(`/${slug}`);
+    } catch (err) {
       setStatus('error');
       setErrorMsg(
-        error.message.includes('duplicate')
-          ? 'That team URL is already taken — try adding more location detail.'
-          : 'Something went wrong. Try again.'
+        err instanceof Error ? err.message : 'Something went wrong.'
       );
-      return;
     }
-
-    router.push(`/${slug}`);
   }
 
   return (
@@ -107,6 +193,152 @@ export default function NewTeamForm({
           placeholder="Conyers, GA"
           className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
         />
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-[#2A3550] bg-[#141E33] p-4">
+        <p className="text-xs tracking-[0.12em] text-[#9AA1B5]">LEAGUE</p>
+        <div className="flex flex-col gap-2">
+          {[
+            { value: 'none', label: 'No league — standalone team' },
+            { value: 'existing', label: 'Join an existing league' },
+            { value: 'new', label: 'Start a new league' },
+          ].map((opt) => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-2 text-sm text-[#C8CCD8]"
+            >
+              <input
+                type="radio"
+                name="leagueMode"
+                value={opt.value}
+                checked={leagueMode === opt.value}
+                onChange={() =>
+                  setLeagueMode(opt.value as 'none' | 'existing' | 'new')
+                }
+                className="h-4 w-4 border-[#2A3550] bg-[#0E1726] text-[#F2A93B] focus:ring-[#F2A93B]"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+
+        {leagueMode === 'existing' && (
+          <div className="mt-3 space-y-3 border-t border-[#2A3550] pt-3">
+            <div>
+              <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                LEAGUE
+              </label>
+              <select
+                value={selectedLeagueId}
+                onChange={(e) => setSelectedLeagueId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              >
+                <option value="">Choose a league…</option>
+                {leagues.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedLeagueId && (
+              <div>
+                <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                  DIVISION
+                </label>
+                <select
+                  value={divisionMode === 'existing' ? selectedDivisionId : '__new__'}
+                  onChange={(e) => {
+                    if (e.target.value === '__new__') {
+                      setDivisionMode('new');
+                    } else {
+                      setDivisionMode('existing');
+                      setSelectedDivisionId(e.target.value);
+                    }
+                  }}
+                  className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+                >
+                  <option value="">Choose a division…</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                  <option value="__new__">+ New division</option>
+                </select>
+                {divisionMode === 'new' && (
+                  <>
+                    <input
+                      value={newDivisionName}
+                      onChange={(e) => setNewDivisionName(e.target.value)}
+                      placeholder="e.g. 10u"
+                      className="mt-2 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+                    />
+                    <p className="mt-1 text-xs text-[#9AA1B5]">
+                      Only works if you&apos;re that league&apos;s admin —
+                      otherwise pick an existing division.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {leagueMode === 'new' && (
+          <div className="mt-3 space-y-3 border-t border-[#2A3550] pt-3">
+            <div>
+              <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                LEAGUE NAME
+              </label>
+              <input
+                value={newLeagueName}
+                onChange={(e) => setNewLeagueName(e.target.value)}
+                placeholder="Rockdale Youth Baseball"
+                className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              />
+            </div>
+            <div>
+              <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                TYPE
+              </label>
+              <select
+                value={newLeagueType}
+                onChange={(e) =>
+                  setNewLeagueType(e.target.value as 'school' | 'club')
+                }
+                className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              >
+                <option value="club">Club / travel league</option>
+                <option value="school">School league</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                LEAGUE LOCATION
+              </label>
+              <input
+                value={newLeagueLocation}
+                onChange={(e) => setNewLeagueLocation(e.target.value)}
+                placeholder="Rockdale County, GA"
+                className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              />
+            </div>
+            <div>
+              <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                FIRST DIVISION
+              </label>
+              <input
+                required={leagueMode === 'new'}
+                value={newDivisionName}
+                onChange={(e) => setNewDivisionName(e.target.value)}
+                placeholder="e.g. 10u"
+                className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <button
