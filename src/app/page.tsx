@@ -46,6 +46,16 @@ const paths = [
 
 const layers = ['League', 'Division', 'Team', 'Roster'];
 
+const sports = [
+  'Baseball',
+  'Softball',
+  'Basketball',
+  'Soccer',
+  'Football',
+  'Volleyball',
+  'Golf',
+];
+
 export default function HomePage() {
   return (
     <main
@@ -118,6 +128,29 @@ export default function HomePage() {
               </span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* sport picker */}
+      <section className="px-6 pb-20 sm:px-10">
+        <div className="mx-auto max-w-5xl text-center">
+          <h2
+            className="text-sm tracking-[0.16em] text-[#9AA1B5]"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            OR BROWSE BY SPORT
+          </h2>
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            {sports.map((sport) => (
+              <Link
+                key={sport}
+                href={`/search?sport=${sport.toLowerCase()}`}
+                className="rounded-full border border-[#2A3550] px-4 py-2 text-sm text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+              >
+                {sport}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
