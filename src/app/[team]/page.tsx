@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTeamBySlug } from '@/lib/teams';
 import { createClient } from '@/lib/supabase/server';
+import JoinTeamPanel from './join-team-panel';
 
 export default async function TeamHomePage({
   params,
@@ -32,6 +33,23 @@ export default async function TeamHomePage({
     .limit(1)
     .maybeSingle();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let myRequestStatus: 'pending' | 'accepted' | 'declined' | null = null;
+  if (user) {
+    const { data: myRequest } = await supabase
+      .from('join_requests')
+      .select('status')
+      .eq('team_id', team.id)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+    myRequestStatus =
+      (myRequest?.status as 'pending' | 'accepted' | 'declined' | undefined) ??
+      null;
+  }
+
   const cards = [
     {
       label: 'Roster',
@@ -52,6 +70,15 @@ export default async function TeamHomePage({
 
   return (
     <div className="mx-auto max-w-3xl">
+      <div className="mb-6">
+        <JoinTeamPanel
+          teamId={team.id}
+          teamSlug={slug}
+          isRecruiting={team.is_recruiting}
+          initialStatus={myRequestStatus}
+        />
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border border-[#2A3550] bg-[#141E33] p-6">
           <p

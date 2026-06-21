@@ -39,6 +39,7 @@ export default function NewTeamForm({
     sports.find((s) => s.toLowerCase() === defaultSport?.toLowerCase()) ??
       sports[0]
   );
+  const [isRecruiting, setIsRecruiting] = useState(false);
 
   const [leagueMode, setLeagueMode] = useState<'none' | 'existing' | 'new'>(
     'none'
@@ -132,6 +133,7 @@ export default function NewTeamForm({
         p_location: location || null,
         p_sport: sport.toLowerCase(),
         p_division_id: divisionId,
+        p_is_recruiting: isRecruiting,
       });
 
       if (teamError) {
@@ -195,6 +197,17 @@ export default function NewTeamForm({
         />
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
+        <input
+          type="checkbox"
+          checked={isRecruiting}
+          onChange={(e) => setIsRecruiting(e.target.checked)}
+          className="h-4 w-4 rounded border-[#2A3550] bg-[#141E33] text-[#F2A93B] focus:ring-[#F2A93B]"
+        />
+        Open to new players — show a &quot;Request to join&quot; button on
+        the team page
+      </label>
+
       <div className="space-y-2 rounded-lg border border-[#2A3550] bg-[#141E33] p-4">
         <p className="text-xs tracking-[0.12em] text-[#9AA1B5]">LEAGUE</p>
         <div className="flex flex-col gap-2">
@@ -248,7 +261,9 @@ export default function NewTeamForm({
                   DIVISION
                 </label>
                 <select
-                  value={divisionMode === 'existing' ? selectedDivisionId : '__new__'}
+                  value={
+                    divisionMode === 'existing' ? selectedDivisionId : '__new__'
+                  }
                   onChange={(e) => {
                     if (e.target.value === '__new__') {
                       setDivisionMode('new');

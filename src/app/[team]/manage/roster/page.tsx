@@ -1,6 +1,7 @@
 import { getTeamBySlug } from '@/lib/teams';
 import { createClient } from '@/lib/supabase/server';
 import RosterManager from './roster-manager';
+import JoinRequestsPanel from './join-requests-panel';
 
 export default async function ManageRosterPage({
   params,
@@ -18,5 +19,30 @@ export default async function ManageRosterPage({
     .eq('team_id', team.id)
     .order('jersey_number', { ascending: true, nullsFirst: false });
 
-  return <RosterManager teamId={team.id} initialPlayers={players ?? []} />;
+  const { data: requests } = await supabase
+    .from('join_requests')
+    .select('id, message, profiles(full_name)')
+    .eq('team_id', team.id)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  return (
+    <div className="space-y-8">
+      <JoinRequestsPanel
+        teamId={team.id}
+        initialRequests={(requests ?? []).map((r) => ({
+          id: r.id,
+          message: r.message,
+          name:
+            (r.profiles as unknown as { full_name: string } | null)
+              ?.full_name ?? 'Someone',
+        }))}
+      />
+      <RosterManager
+        teamId={team.id}
+        initialPlayers={players ?? []}
+        initialIsRecruiting={team.is_recruiting}
+      />
+    </div>
+  );
 }

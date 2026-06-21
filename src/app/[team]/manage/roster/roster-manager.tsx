@@ -13,15 +13,28 @@ type Player = {
 export default function RosterManager({
   teamId,
   initialPlayers,
+  initialIsRecruiting,
 }: {
   teamId: string;
   initialPlayers: Player[];
+  initialIsRecruiting: boolean;
 }) {
   const [players, setPlayers] = useState(initialPlayers);
+  const [isRecruiting, setIsRecruiting] = useState(initialIsRecruiting);
   const [name, setName] = useState('');
   const [jersey, setJersey] = useState('');
   const [position, setPosition] = useState('');
   const [saving, setSaving] = useState(false);
+
+  async function toggleRecruiting() {
+    const next = !isRecruiting;
+    setIsRecruiting(next);
+    const supabase = createClient();
+    await supabase
+      .from('teams')
+      .update({ is_recruiting: next })
+      .eq('id', teamId);
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -63,6 +76,27 @@ export default function RosterManager({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between rounded-lg border border-[#2A3550] bg-[#141E33] p-4">
+        <div>
+          <p className="text-sm">Recruiting</p>
+          <p className="text-xs text-[#9AA1B5]">
+            {isRecruiting
+              ? 'Players can request to join from your team page.'
+              : "Team page won't show a join button."}
+          </p>
+        </div>
+        <button
+          onClick={toggleRecruiting}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            isRecruiting
+              ? 'bg-[#F2A93B] text-[#412402] hover:opacity-90'
+              : 'border border-[#2A3550] text-[#C8CCD8] hover:bg-[#1B2742]'
+          }`}
+        >
+          {isRecruiting ? 'On' : 'Off'}
+        </button>
+      </div>
+
       <form
         onSubmit={handleAdd}
         className="flex flex-col gap-3 rounded-lg border border-[#2A3550] bg-[#141E33] p-4 sm:flex-row sm:items-end"
