@@ -1,18 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Oswald, Inter } from 'next/font/google';
-
-const oswald = Oswald({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-display',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-body',
-});
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Mad Athletics — every team, every league, one scoreboard',
@@ -56,12 +44,14 @@ const sports = [
   'Golf',
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
-    <main
-      className={`${oswald.variable} ${inter.variable} min-h-screen bg-[#10192B] text-[#F5F3EC]`}
-      style={{ fontFamily: 'var(--font-body)' }}
-    >
+    <main className="min-h-screen">
       {/* nav */}
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <span
@@ -70,12 +60,24 @@ export default function HomePage() {
         >
           MAD ATHLETICS
         </span>
-        <Link
-          href="/sign-in"
-          className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
-        >
-          Sign in
-        </Link>
+        {user ? (
+          <form action="/auth/sign-out" method="post" className="flex items-center gap-3">
+            <span className="text-sm text-[#9AA1B5]">{user.email}</span>
+            <button
+              type="submit"
+              className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+            >
+              Sign out
+            </button>
+          </form>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+          >
+            Sign in
+          </Link>
+        )}
       </header>
 
       {/* hero */}
@@ -144,7 +146,7 @@ export default function HomePage() {
             {sports.map((sport) => (
               <Link
                 key={sport}
-                href={`/search?sport=${sport.toLowerCase()}`}
+                href={`/sports/${sport.toLowerCase()}`}
                 className="rounded-full border border-[#2A3550] px-4 py-2 text-sm text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
               >
                 {sport}
