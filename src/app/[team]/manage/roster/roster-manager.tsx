@@ -1,0 +1,153 @@
+'use client';
+
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+
+type Player = {
+  id: string;
+  full_name: string;
+  jersey_number: string | null;
+  position: string | null;
+};
+
+export default function RosterManager({
+  teamId,
+  initialPlayers,
+}: {
+  teamId: string;
+  initialPlayers: Player[];
+}) {
+  const [players, setPlayers] = useState(initialPlayers);
+  const [name, setName] = useState('');
+  const [jersey, setJersey] = useState('');
+  const [position, setPosition] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('players')
+      .insert({
+        team_id: teamId,
+        full_name: name,
+        jersey_number: jersey || null,
+        position: position || null,
+      })
+      .select('id, full_name, jersey_number, position')
+      .single();
+
+    setSaving(false);
+
+    if (!error && data) {
+      setPlayers((prev) =>
+        [...prev, data].sort((a, b) =>
+          (a.jersey_number ?? '').localeCompare(b.jersey_number ?? '')
+        )
+      );
+      setName('');
+      setJersey('');
+      setPosition('');
+    }
+  }
+
+  async function handleRemove(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from('players').delete().eq('id', id);
+    if (!error) {
+      setPlayers((prev) => prev.filter((p) => p.id !== id));
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <form
+        onSubmit={handleAdd}
+        className="flex flex-col gap-3 rounded-lg border border-[#2A3550] bg-[#141E33] p-4 sm:flex-row sm:items-end"
+      >
+        <div className="flex-1">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+            NAME
+          </label>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Player name"
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          />
+        </div>
+        <div className="w-20">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">#</label>
+          <input
+            value={jersey}
+            onChange={(e) => setJersey(e.target.value)}
+            placeholder="12"
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          />
+        </div>
+        <div className="w-32">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+            POSITION
+          </label>
+          <input
+            value={position}
+            onChange={(e) => setPosition(e.target.value)}
+            placeholder="SS"
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-[#F2A93B] px-4 py-2 text-sm font-medium text-[#412402] transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5F3EC]"
+        >
+          {saving ? 'Adding…' : 'Add player'}
+        </button>
+      </form>
+
+      {!players.length ? (
+        <p className="text-sm text-[#9AA1B5]">No players yet.</p>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-[#2A3550]">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[#2A3550] text-xs tracking-[0.12em] text-[#9AA1B5]">
+                <th className="px-4 py-3 font-normal">#</th>
+                <th className="px-4 py-3 font-normal">Name</th>
+                <th className="px-4 py-3 font-normal">Position</th>
+                <th className="px-4 py-3 font-normal"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((p) => (
+                <tr
+                  key={p.id}
+                  className="border-b border-[#2A3550] last:border-0"
+                >
+                  <td className="px-4 py-3 text-[#9AA1B5]">
+                    {p.jersey_number ?? '—'}
+                  </td>
+                  <td className="px-4 py-3">{p.full_name}</td>
+                  <td className="px-4 py-3 text-[#9AA1B5]">
+                    {p.position ?? '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => handleRemove(p.id)}
+                      className="text-[#D85A30] hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -186,20 +186,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* footer */}
-      <footer className="border-t border-[#2A3550] px-6 py-8 sm:px-10">
-        <p className="text-sm text-[#9AA1B5]">
-          Part of the{' '}
-          <a
-            href="https://mad-garage.com"
-            className="rounded-sm text-[#F5F3EC] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
-          >
-            MAD
-          </a>{' '}
-          family.
-        </p>
-      </footer>
-
       <style>{`
         .flap-word {
           display: inline-block;
