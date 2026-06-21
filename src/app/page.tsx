@@ -63,19 +63,23 @@ export default async function HomePage() {
           MAD ATHLETICS
         </span>
         {user ? (
-          <form
-            action="/auth/sign-out"
-            method="post"
-            className="flex items-center gap-3"
-          >
-            <span className="text-sm text-[#9AA1B5]">{user.email}</span>
-            <button
-              type="submit"
-              className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+          <div className="flex items-center gap-4">
+            <Link
+              href="/coach"
+              className="rounded-sm text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
             >
-              Sign out
-            </button>
-          </form>
+              Your teams
+            </Link>
+            <span className="text-sm text-[#9AA1B5]">{user.email}</span>
+            <form action="/auth/sign-out" method="post">
+              <button
+                type="submit"
+                className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         ) : (
           <Link
             href="/sign-in"
