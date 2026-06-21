@@ -3,30 +3,32 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Mad Athletics — every team, every league, one scoreboard',
+  title: 'Mad Athletics — track every game live',
   description:
-    'Set up your team in minutes, or find the schedule, roster, and stats for any team in your league.',
+    'Tap to track the score as it happens — pickup games and full league seasons, all in one place.',
 };
 
 const paths = [
   {
     tag: 'COACH',
     title: 'Run your team',
-    body: 'Build your roster, schedule games, and post stats — free to start.',
+    body: 'Roster, schedule, and live stats for every game — from a Tuesday pickup run to a full season.',
     cta: 'Set up your team',
     href: '/coach/new',
   },
   {
     tag: 'PLAYER / PARENT',
-    title: 'Find your team',
-    body: "Look up any team's schedule, roster, and stats by league or location.",
+    title: 'Find a team or event',
+    body: "Look up any team's schedule and stats, or find a pickup game or tournament near you.",
     cta: 'Find a team',
     href: '/search',
+    secondaryCta: 'Browse events',
+    secondaryHref: '/events',
   },
   {
     tag: 'LEAGUE',
     title: 'Run a league',
-    body: 'Connect every division and team under one shared hub.',
+    body: 'Divisions, standings, and every team in one shared hub.',
     cta: 'Set up your league',
     href: '/league/new',
   },
@@ -61,7 +63,11 @@ export default async function HomePage() {
           MAD ATHLETICS
         </span>
         {user ? (
-          <form action="/auth/sign-out" method="post" className="flex items-center gap-3">
+          <form
+            action="/auth/sign-out"
+            method="post"
+            className="flex items-center gap-3"
+          >
             <span className="text-sm text-[#9AA1B5]">{user.email}</span>
             <button
               type="submit"
@@ -86,20 +92,21 @@ export default async function HomePage() {
           className="mx-auto max-w-3xl text-4xl font-semibold uppercase leading-[1.05] tracking-tight sm:text-6xl"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          <span className="flap-word">Every team.</span>{' '}
+          <span className="flap-word">Pickup game tonight.</span>{' '}
           <span className="flap-word" style={{ animationDelay: '0.12s' }}>
-            Every league.
+            Full season ahead.
           </span>{' '}
           <span
             className="flap-word text-[#F2A93B]"
             style={{ animationDelay: '0.24s' }}
           >
-            One scoreboard.
+            Same scoreboard.
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-base text-[#C8CCD8] sm:text-lg">
-          Set up your team in minutes, or find the schedule, roster, and
-          stats for any team in your league.
+          Tap to track the score as it happens. Works for two friends
+          keeping score at the gym, and for a full league running every
+          division all year.
         </p>
       </section>
 
@@ -107,10 +114,9 @@ export default async function HomePage() {
       <section className="px-6 pb-20 sm:px-10">
         <div className="mx-auto grid max-w-5xl gap-px overflow-hidden rounded-lg border border-[#2A3550] sm:grid-cols-3">
           {paths.map((p) => (
-            <Link
+            <div
               key={p.tag}
-              href={p.href}
-              className="group relative flex flex-col gap-3 bg-[#141E33] p-7 transition-colors hover:bg-[#1B2742] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B] focus-visible:ring-inset"
+              className="flex flex-col gap-3 bg-[#141E33] p-7 transition-colors hover:bg-[#1B2742]"
             >
               <span
                 className="text-xs tracking-[0.16em] text-[#F2A93B]"
@@ -125,11 +131,88 @@ export default async function HomePage() {
                 {p.title}
               </span>
               <span className="text-sm text-[#9AA1B5]">{p.body}</span>
-              <span className="mt-2 text-sm text-[#F2A93B] group-hover:underline">
-                {p.cta} →
-              </span>
-            </Link>
+              <div className="mt-2 flex flex-col gap-1">
+                <Link
+                  href={p.href}
+                  className="text-sm text-[#F2A93B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B] rounded-sm"
+                >
+                  {p.cta} →
+                </Link>
+                {p.secondaryCta && p.secondaryHref && (
+                  <Link
+                    href={p.secondaryHref}
+                    className="text-sm text-[#9AA1B5] hover:text-[#F2A93B] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B] rounded-sm"
+                  >
+                    {p.secondaryCta} →
+                  </Link>
+                )}
+              </div>
+            </div>
           ))}
+        </div>
+      </section>
+
+      {/* how scoring works */}
+      <section className="px-6 pb-24 sm:px-10">
+        <div className="mx-auto grid max-w-4xl gap-10 sm:grid-cols-2 sm:items-center">
+          <div>
+            <h2
+              className="text-sm tracking-[0.16em] text-[#9AA1B5]"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
+              HOW SCORING WORKS
+            </h2>
+            <p className="mt-4 text-lg text-[#F5F3EC]">
+              Open the game. Tap the score as it happens.
+            </p>
+            <p className="mt-3 text-sm text-[#9AA1B5]">
+              That&apos;s the whole casual version — no roster, no setup.
+              Flip on individual stat tracking and the same screen captures
+              every player&apos;s box score too, sport by sport: hits and
+              runs for baseball, points and rebounds for basketball,
+              whatever your sport tracks. Either way, it&apos;s saved the
+              moment you tap it — not written down and entered later.
+            </p>
+          </div>
+
+          {/* static mockup of the live scoring panel */}
+          <div className="rounded-lg border border-[#2A3550] bg-[#141E33] p-6">
+            <div className="flex items-center justify-center gap-8 rounded-lg border border-[#2A3550] bg-[#0E1726] py-6">
+              <div className="text-center">
+                <p className="text-xs tracking-[0.16em] text-[#9AA1B5]">
+                  US
+                </p>
+                <p
+                  className="text-3xl font-semibold"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  14
+                </p>
+              </div>
+              <p className="text-xl text-[#5B6478]">–</p>
+              <div className="text-center">
+                <p className="text-xs tracking-[0.16em] text-[#9AA1B5]">
+                  THEM
+                </p>
+                <p
+                  className="text-3xl font-semibold"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  11
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-center gap-2" aria-hidden="true">
+              {[1, 2, 3].map((n) => (
+                <span
+                  key={n}
+                  className="rounded-lg border border-[#2A3550] px-3 py-2 text-sm text-[#C8CCD8]"
+                >
+                  +{n}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -179,9 +262,10 @@ export default async function HomePage() {
             ))}
           </div>
           <p className="mt-5 text-sm text-[#9AA1B5]">
-            Every team lives inside a division, every division inside a
-            league. Coaches in the same league share a schedule, standings,
-            and a chat — no separate sign-up for each team.
+            Coaches in the same league share standings and a schedule
+            across every division — no separate sign-up for each team. A
+            team doesn&apos;t need a league at all, though: skip it and run
+            standalone, the way a pickup team would.
           </p>
         </div>
       </section>
