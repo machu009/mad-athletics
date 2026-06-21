@@ -21,7 +21,7 @@ export default async function ManageRosterPage({
 
   const { data: requests } = await supabase
     .from('join_requests')
-    .select('id, message, profiles(full_name)')
+    .select('id, message, profile_id, profiles(full_name)')
     .eq('team_id', team.id)
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
@@ -33,6 +33,7 @@ export default async function ManageRosterPage({
         initialRequests={(requests ?? []).map((r) => ({
           id: r.id,
           message: r.message,
+          profileId: r.profile_id,
           name:
             (r.profiles as unknown as { full_name: string } | null)
               ?.full_name ?? 'Someone',

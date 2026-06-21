@@ -19,6 +19,7 @@ export default async function TeamHomePage({
     .from('games')
     .select('opponent_name, game_date, location, is_home')
     .eq('team_id', team.id)
+    .eq('session_type', 'game')
     .gte('game_date', now)
     .order('game_date', { ascending: true })
     .limit(1)
@@ -28,6 +29,7 @@ export default async function TeamHomePage({
     .from('games')
     .select('opponent_name, game_date, team_score, opponent_score')
     .eq('team_id', team.id)
+    .eq('session_type', 'game')
     .lt('game_date', now)
     .order('game_date', { ascending: false })
     .limit(1)
@@ -59,7 +61,7 @@ export default async function TeamHomePage({
     {
       label: 'Schedule',
       href: `/${slug}/schedule`,
-      body: 'Upcoming games and past results.',
+      body: 'Games, practices, and results.',
     },
     {
       label: 'Stats',

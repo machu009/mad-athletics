@@ -6,12 +6,13 @@ import { createClient } from '@/lib/supabase/client';
 
 type Game = {
   id: string;
-  opponent_name: string;
+  opponent_name: string | null;
   game_date: string;
   location: string | null;
   is_home: boolean | null;
   team_score: number | null;
   opponent_score: number | null;
+  session_type: 'game' | 'practice';
 };
 
 export default function ScheduleManager({
@@ -24,6 +25,7 @@ export default function ScheduleManager({
   initialGames: Game[];
 }) {
   const [games, setGames] = useState(initialGames);
+  const [sessionType, setSessionType] = useState<'game' | 'practice'>('game');
   const [opponent, setOpponent] = useState('');
   const [date, setDate] = useState('');
   const [location, setLocation] = useState('');
@@ -39,13 +41,14 @@ export default function ScheduleManager({
       .from('games')
       .insert({
         team_id: teamId,
-        opponent_name: opponent,
+        session_type: sessionType,
+        opponent_name: sessionType === 'game' ? opponent : null,
         game_date: new Date(date).toISOString(),
         location: location || null,
-        is_home: isHome,
+        is_home: sessionType === 'game' ? isHome : null,
       })
       .select(
-        'id, opponent_name, game_date, location, is_home, team_score, opponent_score'
+        'id, opponent_name, game_date, location, is_home, team_score, opponent_score, session_type'
       )
       .single();
 
@@ -62,6 +65,7 @@ export default function ScheduleManager({
       setDate('');
       setLocation('');
       setIsHome(true);
+      setSessionType('game');
     }
   }
 
@@ -71,20 +75,45 @@ export default function ScheduleManager({
         onSubmit={handleAdd}
         className="space-y-3 rounded-lg border border-[#2A3550] bg-[#141E33] p-4"
       >
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="flex-1">
-            <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
-              OPPONENT
-            </label>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
             <input
-              required
-              value={opponent}
-              onChange={(e) => setOpponent(e.target.value)}
-              placeholder="Eastside Eagles"
-              className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              type="radio"
+              name="sessionType"
+              checked={sessionType === 'game'}
+              onChange={() => setSessionType('game')}
+              className="h-4 w-4 border-[#2A3550] bg-[#0E1726] text-[#F2A93B] focus:ring-[#F2A93B]"
             />
-          </div>
-          <div>
+            Game
+          </label>
+          <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
+            <input
+              type="radio"
+              name="sessionType"
+              checked={sessionType === 'practice'}
+              onChange={() => setSessionType('practice')}
+              className="h-4 w-4 border-[#2A3550] bg-[#0E1726] text-[#F2A93B] focus:ring-[#F2A93B]"
+            />
+            Practice
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {sessionType === 'game' && (
+            <div className="flex-1">
+              <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+                OPPONENT
+              </label>
+              <input
+                required
+                value={opponent}
+                onChange={(e) => setOpponent(e.target.value)}
+                placeholder="Eastside Eagles"
+                className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+              />
+            </div>
+          )}
+          <div className={sessionType === 'game' ? '' : 'flex-1'}>
             <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
               DATE
             </label>
@@ -105,31 +134,35 @@ export default function ScheduleManager({
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Home field"
+              placeholder={
+                sessionType === 'practice' ? 'Practice field' : 'Home field'
+              }
               className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
-            <input
-              type="checkbox"
-              checked={isHome}
-              onChange={(e) => setIsHome(e.target.checked)}
-              className="h-4 w-4 rounded border-[#2A3550] bg-[#0E1726] text-[#F2A93B] focus:ring-[#F2A93B]"
-            />
-            Home game
-          </label>
+          {sessionType === 'game' && (
+            <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
+              <input
+                type="checkbox"
+                checked={isHome}
+                onChange={(e) => setIsHome(e.target.checked)}
+                className="h-4 w-4 rounded border-[#2A3550] bg-[#0E1726] text-[#F2A93B] focus:ring-[#F2A93B]"
+              />
+              Home game
+            </label>
+          )}
           <button
             type="submit"
             disabled={saving}
             className="rounded-lg bg-[#F2A93B] px-4 py-2 text-sm font-medium text-[#412402] transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5F3EC]"
           >
-            {saving ? 'Adding…' : 'Add game'}
+            {saving ? 'Adding…' : 'Add to schedule'}
           </button>
         </div>
       </form>
 
       {!games.length ? (
-        <p className="text-sm text-[#9AA1B5]">No games scheduled yet.</p>
+        <p className="text-sm text-[#9AA1B5]">Nothing scheduled yet.</p>
       ) : (
         <div className="space-y-2">
           {games.map((g) => {
@@ -141,8 +174,10 @@ export default function ScheduleManager({
               >
                 <div>
                   <p className="text-sm">
-                    {g.is_home ? 'vs' : '@'} {g.opponent_name}
-                    {logged && (
+                    {g.session_type === 'practice'
+                      ? 'Practice'
+                      : `${g.is_home ? 'vs' : '@'} ${g.opponent_name}`}
+                    {g.session_type === 'game' && logged && (
                       <span className="ml-2 text-[#9AA1B5]">
                         {g.team_score}–{g.opponent_score}
                       </span>
@@ -154,20 +189,31 @@ export default function ScheduleManager({
                       day: 'numeric',
                       year: 'numeric',
                     })}
+                    {g.location ? ` · ${g.location}` : ''}
                   </p>
                 </div>
                 <div className="flex gap-4">
+                  {g.session_type === 'game' && (
+                    <>
+                      <Link
+                        href={`/${teamSlug}/manage/games/${g.id}/live`}
+                        className="text-sm text-[#F2A93B] hover:underline"
+                      >
+                        Live
+                      </Link>
+                      <Link
+                        href={`/${teamSlug}/manage/games/${g.id}/log`}
+                        className="text-sm text-[#F2A93B] hover:underline"
+                      >
+                        {logged ? 'Edit result' : 'Log result'}
+                      </Link>
+                    </>
+                  )}
                   <Link
-                    href={`/${teamSlug}/manage/games/${g.id}/live`}
+                    href={`/${teamSlug}/manage/games/${g.id}/attendance`}
                     className="text-sm text-[#F2A93B] hover:underline"
                   >
-                    Live
-                  </Link>
-                  <Link
-                    href={`/${teamSlug}/manage/games/${g.id}/log`}
-                    className="text-sm text-[#F2A93B] hover:underline"
-                  >
-                    {logged ? 'Edit result' : 'Log result'}
+                    Attendance
                   </Link>
                 </div>
               </div>

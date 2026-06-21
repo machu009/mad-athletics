@@ -15,7 +15,7 @@ export default async function ManageSchedulePage({
   const { data: games } = await supabase
     .from('games')
     .select(
-      'id, opponent_name, game_date, location, is_home, team_score, opponent_score'
+      'id, opponent_name, game_date, location, is_home, team_score, opponent_score, session_type'
     )
     .eq('team_id', team.id)
     .order('game_date', { ascending: false });

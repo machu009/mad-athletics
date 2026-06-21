@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 type Request = {
   id: string;
   message: string | null;
+  profileId: string;
   name: string;
 };
 
@@ -24,6 +25,7 @@ export default function JoinRequestsPanel({
     await supabase.from('players').insert({
       team_id: teamId,
       full_name: req.name,
+      profile_id: req.profileId,
     });
 
     await supabase
