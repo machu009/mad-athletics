@@ -6,7 +6,7 @@ MSG="${1:-Deploy $(date +'%Y-%m-%d %H:%M')}"
 echo "Running local build check..."
 npm run build
 
-if git diff --quiet && git diff --cached --quiet; then
+if [ -z "$(git status --porcelain)" ]; then
   echo "No local changes to commit — pushing existing commits only."
 else
   git add -A
