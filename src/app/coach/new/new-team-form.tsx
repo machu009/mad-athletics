@@ -42,6 +42,9 @@ export default function NewTeamForm({
   );
   const [isRecruiting, setIsRecruiting] = useState(false);
 
+  const [imPlaying, setImPlaying] = useState(false);
+  const [playerName, setPlayerName] = useState('');
+
   const [leagueMode, setLeagueMode] = useState<'none' | 'existing' | 'new'>(
     'none'
   );
@@ -147,24 +150,42 @@ export default function NewTeamForm({
       }
 
       const slug = slugify(name, location);
-      const { error: teamError } = await supabase.rpc('create_team', {
-        p_name: name,
-        p_slug: slug,
-        p_location: location || null,
-        p_sport: sport.toLowerCase(),
-        p_division_id: divisionId,
-        p_is_recruiting: isRecruiting,
-        p_zip_code: zipCode || null,
-        p_latitude: latitude,
-        p_longitude: longitude,
-      });
+      const { data: newTeamId, error: teamError } = await supabase.rpc(
+        'create_team',
+        {
+          p_name: name,
+          p_slug: slug,
+          p_location: location || null,
+          p_sport: sport.toLowerCase(),
+          p_division_id: divisionId,
+          p_is_recruiting: isRecruiting,
+          p_zip_code: zipCode || null,
+          p_latitude: latitude,
+          p_longitude: longitude,
+        }
+      );
 
-      if (teamError) {
+      if (teamError || !newTeamId) {
         throw new Error(
-          teamError.message.includes('duplicate')
+          teamError?.message.includes('duplicate')
             ? 'That team URL is already taken — try adding more location detail.'
             : 'Something went wrong creating the team. Try again.'
         );
+      }
+
+      // By now the creator is already a team_member (create_team() set
+      // that up), so this insert is already authorized by the existing
+      // players RLS policy — no separate RPC needed for this part.
+      if (imPlaying && playerName) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        await supabase.from('players').insert({
+          team_id: newTeamId,
+          full_name: playerName,
+          profile_id: user?.id,
+        });
       }
 
       router.push(`/${slug}`);
@@ -248,6 +269,27 @@ export default function NewTeamForm({
         Open to new players — show a &quot;Request to join&quot; button on
         the team page
       </label>
+
+      <div className="space-y-2 rounded-lg border border-[#2A3550] bg-[#141E33] p-4">
+        <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
+          <input
+            type="checkbox"
+            checked={imPlaying}
+            onChange={(e) => setImPlaying(e.target.checked)}
+            className="h-4 w-4 rounded border-[#2A3550] bg-[#0E1726] text-[#F2A93B] focus:ring-[#F2A93B]"
+          />
+          I&apos;ll also be playing on this team
+        </label>
+        {imPlaying && (
+          <input
+            required
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="Your name, as it'll show on the roster"
+            className="mt-2 w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-3 py-2 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          />
+        )}
+      </div>
 
       <div className="space-y-2 rounded-lg border border-[#2A3550] bg-[#141E33] p-4">
         <p className="text-xs tracking-[0.12em] text-[#9AA1B5]">LEAGUE</p>
