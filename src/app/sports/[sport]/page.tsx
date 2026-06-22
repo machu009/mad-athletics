@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import TeamsMap from './teams-map';
 
 const sportLabels: Record<string, string> = {
   baseball: 'Baseball',
@@ -24,8 +26,16 @@ export default async function SportLandingPage({
     notFound();
   }
 
+  const supabase = await createClient();
+  const { data: teams } = await supabase
+    .from('teams')
+    .select('id, name, slug, latitude, longitude')
+    .eq('sport', slug)
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null);
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+    <div className="flex min-h-screen flex-col items-center px-6 py-16 text-center">
       <p
         className="text-xs tracking-[0.16em] text-[#F2A93B]"
         style={{ fontFamily: 'var(--font-display)' }}
@@ -81,6 +91,26 @@ export default async function SportLandingPage({
             Look up schedule, roster, and stats by location.
           </span>
         </Link>
+      </div>
+
+      <div className="mt-12 w-full max-w-2xl text-left">
+        <h2
+          className="text-sm tracking-[0.16em] text-[#9AA1B5]"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          {label.toUpperCase()} TEAMS NEAR YOU
+        </h2>
+        <div className="mt-4">
+          <TeamsMap
+            teams={(teams ?? []).map((t) => ({
+              id: t.id,
+              name: t.name,
+              slug: t.slug,
+              latitude: t.latitude as number,
+              longitude: t.longitude as number,
+            }))}
+          />
+        </div>
       </div>
 
       <Link

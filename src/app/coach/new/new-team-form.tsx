@@ -35,6 +35,7 @@ export default function NewTeamForm({
   const router = useRouter();
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [sport, setSport] = useState(
     sports.find((s) => s.toLowerCase() === defaultSport?.toLowerCase()) ??
       sports[0]
@@ -82,6 +83,25 @@ export default function NewTeamForm({
 
     const supabase = createClient();
     let divisionId: string | null = null;
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+
+    if (zipCode) {
+      try {
+        const geoRes = await fetch('/api/geocode-zip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zipCode }),
+        });
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          latitude = geoData.latitude;
+          longitude = geoData.longitude;
+        }
+      } catch {
+        // Non-blocking — the team just won't show up on the sport map.
+      }
+    }
 
     try {
       if (leagueMode === 'new') {
@@ -134,6 +154,9 @@ export default function NewTeamForm({
         p_sport: sport.toLowerCase(),
         p_division_id: divisionId,
         p_is_recruiting: isRecruiting,
+        p_zip_code: zipCode || null,
+        p_latitude: latitude,
+        p_longitude: longitude,
       });
 
       if (teamError) {
@@ -185,17 +208,35 @@ export default function NewTeamForm({
         </select>
       </div>
 
-      <div>
-        <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
-          LOCATION
-        </label>
-        <input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Conyers, GA"
-          className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
-        />
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+            LOCATION
+          </label>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Conyers, GA"
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          />
+        </div>
+        <div className="w-28">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+            ZIP CODE
+          </label>
+          <input
+            value={zipCode}
+            onChange={(e) => setZipCode(e.target.value.replace(/\D/g, ''))}
+            maxLength={5}
+            placeholder="30094"
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          />
+        </div>
       </div>
+      <p className="text-xs text-[#9AA1B5]">
+        The zip code places your team on the area map for this sport — never
+        an exact address, just the general area.
+      </p>
 
       <label className="flex items-center gap-2 text-sm text-[#C8CCD8]">
         <input
