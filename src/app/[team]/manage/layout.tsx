@@ -41,6 +41,7 @@ export default async function ManageLayout({
   const tabs = [
     { label: 'Roster', href: `/${slug}/manage/roster` },
     { label: 'Schedule', href: `/${slug}/manage/schedule` },
+    { label: 'Coaches', href: `/${slug}/manage/coaches` },
     { label: 'Settings', href: `/${slug}/manage/settings` },
   ];
 

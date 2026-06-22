@@ -69,6 +69,21 @@ export default function ScheduleManager({
     }
   }
 
+  async function handleDelete(id: string) {
+    if (
+      !window.confirm(
+        'Delete this from the schedule? This also removes any logged stats and RSVPs for it — there\'s no undo.'
+      )
+    ) {
+      return;
+    }
+    const supabase = createClient();
+    const { error } = await supabase.from('games').delete().eq('id', id);
+    if (!error) {
+      setGames((prev) => prev.filter((g) => g.id !== id));
+    }
+  }
+
   return (
     <div className="space-y-6">
       <form
@@ -215,6 +230,12 @@ export default function ScheduleManager({
                   >
                     Attendance
                   </Link>
+                  <button
+                    onClick={() => handleDelete(g.id)}
+                    className="text-sm text-[#D85A30] hover:underline"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             );

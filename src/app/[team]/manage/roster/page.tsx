@@ -15,7 +15,7 @@ export default async function ManageRosterPage({
   const supabase = await createClient();
   const { data: players } = await supabase
     .from('players')
-    .select('id, full_name, jersey_number, position')
+    .select('id, full_name, jersey_number, position, profile_id')
     .eq('team_id', team.id)
     .order('jersey_number', { ascending: true, nullsFirst: false });
 

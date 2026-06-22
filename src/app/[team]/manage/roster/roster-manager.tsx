@@ -8,6 +8,7 @@ type Player = {
   full_name: string;
   jersey_number: string | null;
   position: string | null;
+  profile_id: string | null;
 };
 
 export default function RosterManager({
@@ -25,6 +26,12 @@ export default function RosterManager({
   const [jersey, setJersey] = useState('');
   const [position, setPosition] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editJersey, setEditJersey] = useState('');
+  const [editPosition, setEditPosition] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   async function toggleRecruiting() {
     const next = !isRecruiting;
@@ -49,7 +56,7 @@ export default function RosterManager({
         jersey_number: jersey || null,
         position: position || null,
       })
-      .select('id, full_name, jersey_number, position')
+      .select('id, full_name, jersey_number, position, profile_id')
       .single();
 
     setSaving(false);
@@ -71,6 +78,67 @@ export default function RosterManager({
     const { error } = await supabase.from('players').delete().eq('id', id);
     if (!error) {
       setPlayers((prev) => prev.filter((p) => p.id !== id));
+    }
+  }
+
+  function startEdit(p: Player) {
+    setEditingId(p.id);
+    setEditName(p.full_name);
+    setEditJersey(p.jersey_number ?? '');
+    setEditPosition(p.position ?? '');
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(id: string) {
+    setEditSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('players')
+      .update({
+        full_name: editName,
+        jersey_number: editJersey || null,
+        position: editPosition || null,
+      })
+      .eq('id', id);
+
+    setEditSaving(false);
+
+    if (!error) {
+      setPlayers((prev) =>
+        prev
+          .map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  full_name: editName,
+                  jersey_number: editJersey || null,
+                  position: editPosition || null,
+                }
+              : p
+          )
+          .sort((a, b) =>
+            (a.jersey_number ?? '').localeCompare(b.jersey_number ?? '')
+          )
+      );
+      setEditingId(null);
+    }
+  }
+
+  async function makeCoach(p: Player) {
+    if (!p.profile_id) return;
+    if (!window.confirm(`Make ${p.full_name} an assistant coach?`)) return;
+
+    const supabase = createClient();
+    const { error } = await supabase.from('team_members').insert({
+      team_id: teamId,
+      profile_id: p.profile_id,
+      role: 'assistant_coach',
+    });
+    if (!error) {
+      window.alert(`${p.full_name} is now an assistant coach.`);
     }
   }
 
@@ -156,28 +224,90 @@ export default function RosterManager({
               </tr>
             </thead>
             <tbody>
-              {players.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-[#2A3550] last:border-0"
-                >
-                  <td className="px-4 py-3 text-[#9AA1B5]">
-                    {p.jersey_number ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">{p.full_name}</td>
-                  <td className="px-4 py-3 text-[#9AA1B5]">
-                    {p.position ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleRemove(p.id)}
-                      className="text-[#D85A30] hover:underline"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {players.map((p) =>
+                editingId === p.id ? (
+                  <tr
+                    key={p.id}
+                    className="border-b border-[#2A3550] last:border-0"
+                  >
+                    <td className="px-2 py-2">
+                      <input
+                        value={editJersey}
+                        onChange={(e) => setEditJersey(e.target.value)}
+                        className="w-14 rounded-lg border border-[#2A3550] bg-[#0E1726] px-2 py-1.5 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full rounded-lg border border-[#2A3550] bg-[#0E1726] px-2 py-1.5 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        value={editPosition}
+                        onChange={(e) => setEditPosition(e.target.value)}
+                        className="w-24 rounded-lg border border-[#2A3550] bg-[#0E1726] px-2 py-1.5 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+                      />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => saveEdit(p.id)}
+                          disabled={editSaving}
+                          className="text-[#F2A93B] hover:underline disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="text-[#9AA1B5] hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr
+                    key={p.id}
+                    className="border-b border-[#2A3550] last:border-0"
+                  >
+                    <td className="px-4 py-3 text-[#9AA1B5]">
+                      {p.jersey_number ?? '—'}
+                    </td>
+                    <td className="px-4 py-3">{p.full_name}</td>
+                    <td className="px-4 py-3 text-[#9AA1B5]">
+                      {p.position ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-3">
+                        {p.profile_id && (
+                          <button
+                            onClick={() => makeCoach(p)}
+                            className="text-[#9AA1B5] hover:text-[#F2A93B] hover:underline"
+                          >
+                            Make coach
+                          </button>
+                        )}
+                        <button
+                          onClick={() => startEdit(p)}
+                          className="text-[#F2A93B] hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleRemove(p.id)}
+                          className="text-[#D85A30] hover:underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>

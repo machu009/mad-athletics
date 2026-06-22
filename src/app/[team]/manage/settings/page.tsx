@@ -23,6 +23,7 @@ export default async function ManageSettingsPage({
         initialName={team.name}
         initialLocation={team.location ?? ''}
         initialZipCode={team.zip_code ?? ''}
+        initialSport={team.sport}
       />
     </div>
   );
