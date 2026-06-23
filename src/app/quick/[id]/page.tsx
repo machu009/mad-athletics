@@ -9,6 +9,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+type Player = {
+  id: string;
+  name: string;
+  stats: Record<string, number>;
+};
+
 type QuickGame = {
   id: string;
   sport: string;
@@ -16,8 +22,24 @@ type QuickGame = {
   team_b_name: string;
   score_a: number;
   score_b: number;
-  game_state: Record<string, any>;
+  game_state: {
+    advancedMode?: boolean;
+    players?: { a: Player[]; b: Player[] };
+    [key: string]: any;
+  };
   status: string;
+};
+
+// Matches the stat language already on the homepage ("hits and runs for
+// baseball, points and rebounds for basketball, whatever your sport tracks").
+const STAT_DEFS: Record<string, { key: string; label: string }[]> = {
+  baseball: [{ key: 'hits', label: 'Hits' }, { key: 'runs', label: 'Runs' }],
+  softball: [{ key: 'hits', label: 'Hits' }, { key: 'runs', label: 'Runs' }],
+  basketball: [{ key: 'points', label: 'Points' }, { key: 'rebounds', label: 'Rebounds' }],
+  soccer: [{ key: 'goals', label: 'Goals' }, { key: 'assists', label: 'Assists' }],
+  football: [{ key: 'touchdowns', label: 'TDs' }, { key: 'tackles', label: 'Tackles' }],
+  volleyball: [{ key: 'kills', label: 'Kills' }, { key: 'blocks', label: 'Blocks' }],
+  golf: [{ key: 'strokes', label: 'Strokes' }],
 };
 
 function TeamNameEditor({
@@ -58,6 +80,62 @@ function TeamNameEditor({
       className="w-full border-b border-dashed border-[#2A3550] bg-transparent pb-2 text-center text-xl font-medium text-[#F5F3EC] focus:border-[#F2A93B] focus:outline-none"
       style={{ fontFamily: 'var(--font-display)' }}
     />
+  );
+}
+
+function PlayerStatRow({
+  player,
+  statDefs,
+  editable,
+  onIncrement,
+}: {
+  player: Player;
+  statDefs: { key: string; label: string }[];
+  editable: boolean;
+  onIncrement: (statKey: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-[#2A3550] p-3">
+      <p className="text-sm font-medium text-[#F5F3EC]">{player.name}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {statDefs.map((stat) => (
+          <button
+            key={stat.key}
+            onClick={() => editable && onIncrement(stat.key)}
+            disabled={!editable}
+            className="rounded-full border border-[#2A3550] px-3 py-1 text-xs text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] disabled:cursor-default disabled:hover:border-[#2A3550] disabled:hover:text-[#C8CCD8]"
+          >
+            {stat.label}: {player.stats?.[stat.key] ?? 0}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AddPlayerForm({ onAdd }: { onAdd: (name: string) => void }) {
+  const [name, setName] = useState('');
+
+  return (
+    <div className="flex gap-2">
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Player name"
+        className="flex-1 rounded-lg border border-[#2A3550] bg-transparent px-3 py-2 text-sm text-[#F5F3EC] placeholder:text-[#5B6478] focus:border-[#F2A93B] focus:outline-none"
+      />
+      <button
+        onClick={() => {
+          if (name.trim()) {
+            onAdd(name.trim());
+            setName('');
+          }
+        }}
+        className="rounded-lg border border-[#2A3550] px-4 py-2 text-sm text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B]"
+      >
+        Add
+      </button>
+    </div>
   );
 }
 
@@ -117,6 +195,40 @@ export default function QuickGamePage({
     setShowSavePrompt(true);
   }
 
+  function toggleAdvancedMode() {
+    if (!game) return;
+    updateGame({
+      game_state: {
+        ...game.game_state,
+        advancedMode: !game.game_state?.advancedMode,
+      },
+    });
+  }
+
+  function addPlayer(team: 'a' | 'b', name: string) {
+    if (!game) return;
+    const players = game.game_state?.players ?? { a: [], b: [] };
+    const newPlayer: Player = { id: crypto.randomUUID(), name, stats: {} };
+    const updatedPlayers = {
+      ...players,
+      [team]: [...(players[team] ?? []), newPlayer],
+    };
+    updateGame({ game_state: { ...game.game_state, players: updatedPlayers } });
+  }
+
+  function incrementPlayerStat(team: 'a' | 'b', playerId: string, statKey: string) {
+    if (!game) return;
+    const players = game.game_state?.players ?? { a: [], b: [] };
+    const updatedTeamPlayers = (players[team] ?? []).map((p) =>
+      p.id === playerId
+        ? { ...p, stats: { ...p.stats, [statKey]: (p.stats?.[statKey] ?? 0) + 1 } }
+        : p
+    );
+    updateGame({
+      game_state: { ...game.game_state, players: { ...players, [team]: updatedTeamPlayers } },
+    });
+  }
+
   if (!game) {
     return (
       <div className="py-16 text-center text-sm text-[#9AA1B5]">
@@ -124,6 +236,11 @@ export default function QuickGamePage({
       </div>
     );
   }
+
+  const statDefs = STAT_DEFS[game.sport] ?? [];
+  const advancedMode = !!game.game_state?.advancedMode;
+  const playersA = game.game_state?.players?.a ?? [];
+  const playersB = game.game_state?.players?.b ?? [];
 
   return (
     <div className="mx-auto max-w-md px-6 py-12 text-center">
@@ -133,6 +250,15 @@ export default function QuickGamePage({
       >
         {game.sport.toUpperCase()}
       </p>
+
+      {isOwner && statDefs.length > 0 && (
+        <button
+          onClick={toggleAdvancedMode}
+          className="mt-3 text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+        >
+          {advancedMode ? 'Hide player stats' : 'Track player stats'}
+        </button>
+      )}
 
       <div className="mt-8 flex items-center justify-between gap-4">
         <div className="flex-1">
@@ -197,6 +323,42 @@ export default function QuickGamePage({
           )}
         </div>
       </div>
+
+      {advancedMode && statDefs.length > 0 && (
+        <div className="mt-10 grid grid-cols-1 gap-6 text-left sm:grid-cols-2">
+          <div className="space-y-3">
+            <p className="text-xs tracking-[0.16em] text-[#9AA1B5]" style={{ fontFamily: 'var(--font-display)' }}>
+              {game.team_a_name.toUpperCase()}
+            </p>
+            {playersA.map((player) => (
+              <PlayerStatRow
+                key={player.id}
+                player={player}
+                statDefs={statDefs}
+                editable={isOwner}
+                onIncrement={(statKey) => incrementPlayerStat('a', player.id, statKey)}
+              />
+            ))}
+            {isOwner && <AddPlayerForm onAdd={(name) => addPlayer('a', name)} />}
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-xs tracking-[0.16em] text-[#9AA1B5]" style={{ fontFamily: 'var(--font-display)' }}>
+              {game.team_b_name.toUpperCase()}
+            </p>
+            {playersB.map((player) => (
+              <PlayerStatRow
+                key={player.id}
+                player={player}
+                statDefs={statDefs}
+                editable={isOwner}
+                onIncrement={(statKey) => incrementPlayerStat('b', player.id, statKey)}
+              />
+            ))}
+            {isOwner && <AddPlayerForm onAdd={(name) => addPlayer('b', name)} />}
+          </div>
+        </div>
+      )}
 
       {!isOwner && (
         <p className="mt-8 text-sm text-[#9AA1B5]">

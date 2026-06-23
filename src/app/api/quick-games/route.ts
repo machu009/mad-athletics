@@ -46,21 +46,22 @@ export async function POST(request: Request) {
 }
 
 function defaultStateForSport(sport: string) {
+  const base = { advancedMode: false, players: { a: [], b: [] } };
   switch (sport) {
     case 'baseball':
     case 'softball':
-      return { inning: 1, half: 'top', outs: 0 };
+      return { ...base, inning: 1, half: 'top', outs: 0 };
     case 'basketball':
-      return { period: 1, periodLabel: 'Q1' };
+      return { ...base, period: 1, periodLabel: 'Q1' };
     case 'soccer':
-      return { half: 1, minute: 0 };
+      return { ...base, half: 1, minute: 0 };
     case 'football':
-      return { quarter: 1 };
+      return { ...base, quarter: 1 };
     case 'volleyball':
-      return { set: 1, setsWonA: 0, setsWonB: 0 };
+      return { ...base, set: 1, setsWonA: 0, setsWonB: 0 };
     case 'golf':
-      return { hole: 1 };
+      return { ...base, hole: 1 };
     default:
-      return {};
+      return base;
   }
 }
