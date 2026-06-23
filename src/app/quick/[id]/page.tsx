@@ -36,7 +36,14 @@ function TeamNameEditor({
   }, [name]);
 
   if (!editable) {
-    return <p className="font-semibold mb-2">{name}</p>;
+    return (
+      <p
+        className="border-b border-dashed border-[#2A3550] pb-2 text-xl font-medium text-[#F5F3EC]"
+        style={{ fontFamily: 'var(--font-display)' }}
+      >
+        {name}
+      </p>
+    );
   }
 
   return (
@@ -48,7 +55,8 @@ function TeamNameEditor({
         if (trimmed && trimmed !== name) onSave(trimmed);
         else setValue(name);
       }}
-      className="font-semibold mb-2 text-center bg-transparent border-b border-dashed border-gray-300 focus:outline-none focus:border-black w-full"
+      className="w-full border-b border-dashed border-[#2A3550] bg-transparent pb-2 text-center text-xl font-medium text-[#F5F3EC] focus:border-[#F2A93B] focus:outline-none"
+      style={{ fontFamily: 'var(--font-display)' }}
     />
   );
 }
@@ -109,58 +117,109 @@ export default function QuickGamePage({
     setShowSavePrompt(true);
   }
 
-  if (!game) return <div className="text-center py-12">Loading game…</div>;
+  if (!game) {
+    return (
+      <div className="py-16 text-center text-sm text-[#9AA1B5]">
+        Loading game…
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-md mx-auto py-8 px-4 text-center">
-      <p className="text-sm text-gray-400 uppercase tracking-wide mb-2">{game.sport}</p>
+    <div className="mx-auto max-w-md px-6 py-12 text-center">
+      <p
+        className="text-xs tracking-[0.16em] text-[#9AA1B5]"
+        style={{ fontFamily: 'var(--font-display)' }}
+      >
+        {game.sport.toUpperCase()}
+      </p>
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="mt-8 flex items-center justify-between gap-4">
         <div className="flex-1">
           <TeamNameEditor
             name={game.team_a_name}
             editable={isOwner}
             onSave={(name) => updateGame({ team_a_name: name })}
           />
-          <p className="text-5xl font-bold">{game.score_a}</p>
+          <p
+            className="mt-4 text-5xl font-semibold text-[#F5F3EC]"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {game.score_a}
+          </p>
           {isOwner && (
-            <div className="flex justify-center gap-2 mt-3">
-              <button onClick={() => adjustScore('a', -1)} className="border rounded-full w-10 h-10">−</button>
-              <button onClick={() => adjustScore('a', 1)} className="border rounded-full w-10 h-10">+</button>
+            <div className="mt-4 flex justify-center gap-2">
+              <button
+                onClick={() => adjustScore('a', -1)}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A3550] text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+              >
+                −
+              </button>
+              <button
+                onClick={() => adjustScore('a', 1)}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A3550] text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+              >
+                +
+              </button>
             </div>
           )}
         </div>
-        <div className="px-4 text-gray-400 font-medium">vs</div>
+
+        <p className="px-2 text-xl text-[#5B6478]">vs</p>
+
         <div className="flex-1">
           <TeamNameEditor
             name={game.team_b_name}
             editable={isOwner}
             onSave={(name) => updateGame({ team_b_name: name })}
           />
-          <p className="text-5xl font-bold">{game.score_b}</p>
+          <p
+            className="mt-4 text-5xl font-semibold text-[#F5F3EC]"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            {game.score_b}
+          </p>
           {isOwner && (
-            <div className="flex justify-center gap-2 mt-3">
-              <button onClick={() => adjustScore('b', -1)} className="border rounded-full w-10 h-10">−</button>
-              <button onClick={() => adjustScore('b', 1)} className="border rounded-full w-10 h-10">+</button>
+            <div className="mt-4 flex justify-center gap-2">
+              <button
+                onClick={() => adjustScore('b', -1)}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A3550] text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+              >
+                −
+              </button>
+              <button
+                onClick={() => adjustScore('b', 1)}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[#2A3550] text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
+              >
+                +
+              </button>
             </div>
           )}
         </div>
       </div>
 
       {!isOwner && (
-        <p className="text-sm text-gray-400 mb-4">You're watching live — only the scorer can edit.</p>
+        <p className="mt-8 text-sm text-[#9AA1B5]">
+          You&apos;re watching live — only the scorer can edit.
+        </p>
       )}
 
       {isOwner && game.status === 'active' && (
-        <button onClick={endGame} className="text-sm text-gray-500 underline">
+        <button
+          onClick={endGame}
+          className="mt-8 text-sm text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+        >
           End game
         </button>
       )}
 
       {showSavePrompt && (
-        <div className="mt-8 border rounded-lg p-4 bg-gray-50">
-          <p className="font-medium mb-2">Want to keep this team going?</p>
-          <a href="/teams/new" className="text-sm font-semibold underline">
+        <div className="mt-8 rounded-lg border border-[#2A3550] bg-[#141E33] p-6">
+          <p className="text-[#F5F3EC]">Want to keep this team going?</p>
+          <a
+            href="/coach/new"
+            className="mt-2 inline-block text-sm font-semibold text-[#F2A93B] hover:underline"
+          >
             Save this as a real team →
           </a>
         </div>
