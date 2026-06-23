@@ -60,6 +60,9 @@ export default async function RootLayout({
                 <Link href="/coach" className={navLinkClass}>
                   Your teams
                 </Link>
+                <Link href="/profile" className={navLinkClass}>
+                  Profile
+                </Link>
                 <span className="text-sm text-[#9AA1B5]">{user.email}</span>
                 <form action="/auth/sign-out" method="post">
                   <button type="submit" className={navLinkClass}>
