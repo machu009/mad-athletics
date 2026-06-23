@@ -2,16 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Mad Athletics — track every game live',
+  title: 'Mad Athletics — free, from pickup games to full leagues',
   description:
-    'Tap to track the score as it happens — pickup games and full league seasons, all in one place.',
+    'Free setup and management for everything from a pickup game tonight to a league running multiple teams all season.',
 };
 
 const paths = [
   {
     tag: 'COACH',
     title: 'Run your team',
-    body: 'Roster, schedule, and live stats for every game — from a Tuesday pickup run to a full season.',
+    body: 'Roster, schedule, and live stats for every game — completely free, from a Tuesday pickup run to a full season.',
     cta: 'Set up your team',
     href: '/coach/new',
   },
@@ -27,7 +27,7 @@ const paths = [
   {
     tag: 'LEAGUE',
     title: 'Run a league',
-    body: 'Divisions, standings, and every team in one shared hub.',
+    body: 'Free to run, with divisions, standings, and every team in one shared hub.',
     cta: 'Set up your league',
     href: '/league/new',
   },
@@ -50,8 +50,14 @@ export default function HomePage() {
     <main className="min-h-screen">
       {/* hero */}
       <section className="px-6 pb-16 pt-10 text-center sm:px-10 sm:pb-24 sm:pt-16">
+        <p
+          className="text-xs tracking-[0.16em] text-[#F2A93B]"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          FREE — PICKUP GAMES TO FULL LEAGUES
+        </p>
         <h1
-          className="mx-auto max-w-3xl text-4xl font-semibold uppercase leading-[1.05] tracking-tight sm:text-6xl"
+          className="mx-auto mt-3 max-w-3xl text-4xl font-semibold uppercase leading-[1.05] tracking-tight sm:text-6xl"
           style={{ fontFamily: 'var(--font-display)' }}
         >
           <span className="flap-word">Pickup game tonight.</span>{' '}
@@ -66,9 +72,9 @@ export default function HomePage() {
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-base text-[#C8CCD8] sm:text-lg">
-          Tap to track the score as it happens. Works for two friends
-          keeping score at the gym, and for a full league running every
-          division all year.
+          Free to set up, free to run all season — whether it&apos;s two
+          friends keeping score tonight or a league with a dozen teams
+          competing all year.
         </p>
       </section>
 
@@ -227,7 +233,9 @@ export default function HomePage() {
             Coaches in the same league share standings and a schedule
             across every division — no separate sign-up for each team. A
             team doesn&apos;t need a league at all, though: skip it and run
-            standalone, the way a pickup team would.
+            standalone, the way a pickup team would. Either way is free — a
+            standalone pickup team and a ten-team league cost exactly the
+            same: nothing.
           </p>
         </div>
       </section>
