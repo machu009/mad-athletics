@@ -2,6 +2,14 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import RegisterPanel from './register-panel';
 
+const eventTypeLabels: Record<string, string> = {
+  pickup: 'Pickup',
+  practice: 'Practice',
+  tournament: 'Tournament',
+  social: 'Social',
+  other: 'Other',
+};
+
 export default async function EventDetailPage({
   params,
 }: {
@@ -13,7 +21,7 @@ export default async function EventDetailPage({
   const { data: event } = await supabase
     .from('events')
     .select(
-      'id, title, description, event_date, location, capacity, allow_individual_signup, allow_team_signup, host_team_id, teams(name, slug)'
+      'id, title, event_type, description, event_date, location, capacity, allow_individual_signup, allow_team_signup, host_team_id, teams(name, slug)'
     )
     .eq('id', eventId)
     .single();
@@ -24,9 +32,7 @@ export default async function EventDetailPage({
 
   const { data: registrations } = await supabase
     .from('event_registrations')
-    .select(
-      'id, team_id, profile_id, teams(name), profiles(full_name)'
-    )
+    .select('id, team_id, profile_id, teams(name), profiles(full_name)')
     .eq('event_id', eventId)
     .eq('status', 'registered');
 
@@ -50,6 +56,7 @@ export default async function EventDetailPage({
     slug: string;
   } | null;
   const registeredCount = registrations?.length ?? 0;
+  const typeLabel = eventTypeLabels[event.event_type] ?? event.event_type;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
@@ -57,7 +64,8 @@ export default async function EventDetailPage({
         className="text-xs tracking-[0.16em] text-[#F2A93B]"
         style={{ fontFamily: 'var(--font-display)' }}
       >
-        {host ? `HOSTED BY ${host.name.toUpperCase()}` : 'OPEN EVENT'}
+        {typeLabel.toUpperCase()}
+        {host ? ` · HOSTED BY ${host.name.toUpperCase()}` : ' · OPEN EVENT'}
       </p>
       <h1
         className="mt-1 text-2xl font-semibold sm:text-3xl"

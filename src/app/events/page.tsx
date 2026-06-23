@@ -11,23 +11,36 @@ const sports = [
   'Golf',
 ];
 
+const eventTypes: Array<{ value: string; label: string }> = [
+  { value: 'pickup', label: 'Pickup' },
+  { value: 'practice', label: 'Practice' },
+  { value: 'tournament', label: 'Tournament' },
+  { value: 'social', label: 'Social' },
+  { value: 'other', label: 'Other' },
+];
+
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sport?: string }>;
+  searchParams: Promise<{ sport?: string; type?: string }>;
 }) {
-  const { sport } = await searchParams;
+  const { sport, type } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
     .from('events')
-    .select('id, title, sport, event_date, location, host_team_id, teams(name, slug)')
+    .select(
+      'id, title, event_type, sport, event_date, location, host_team_id, teams(name, slug)'
+    )
     .gte('event_date', new Date().toISOString())
     .order('event_date', { ascending: true })
     .limit(50);
 
   if (sport) {
     query = query.eq('sport', sport);
+  }
+  if (type) {
+    query = query.eq('event_type', type);
   }
 
   const { data: events } = await query;
@@ -49,7 +62,19 @@ export default async function EventsPage({
         </Link>
       </div>
 
-      <form method="get" className="mt-4">
+      <form method="get" className="mt-4 flex gap-3">
+        <select
+          name="type"
+          defaultValue={type ?? ''}
+          className="rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-2 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+        >
+          <option value="">All types</option>
+          {eventTypes.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
         <select
           name="sport"
           defaultValue={sport ?? ''}
@@ -73,6 +98,9 @@ export default async function EventsPage({
               name: string;
               slug: string;
             } | null;
+            const typeLabel =
+              eventTypes.find((t) => t.value === e.event_type)?.label ??
+              e.event_type;
             return (
               <Link
                 key={e.id}
@@ -82,9 +110,9 @@ export default async function EventsPage({
                 <div>
                   <p className="text-sm">{e.title}</p>
                   <p className="text-xs text-[#9AA1B5]">
-                    {e.sport && (
-                      <span className="capitalize">{e.sport} · </span>
-                    )}
+                    <span className="text-[#F2A93B]">{typeLabel}</span>
+                    {e.sport && <span className="capitalize"> · {e.sport}</span>}
+                    {' · '}
                     {host ? `Hosted by ${host.name}` : 'Open event'}
                     {e.location ? ` · ${e.location}` : ''}
                   </p>

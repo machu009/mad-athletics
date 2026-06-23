@@ -14,6 +14,14 @@ const sports = [
   'Golf',
 ];
 
+const eventTypes: Array<{ value: string; label: string }> = [
+  { value: 'pickup', label: 'Pickup' },
+  { value: 'practice', label: 'Practice' },
+  { value: 'tournament', label: 'Tournament' },
+  { value: 'social', label: 'Social' },
+  { value: 'other', label: 'Other' },
+];
+
 type Team = { id: string; name: string; slug: string };
 
 export default function NewEventForm({
@@ -25,6 +33,7 @@ export default function NewEventForm({
 }) {
   const router = useRouter();
   const [title, setTitle] = useState('');
+  const [eventType, setEventType] = useState('pickup');
   const [sport, setSport] = useState(
     sports.find((s) => s.toLowerCase() === defaultSport?.toLowerCase()) ?? ''
   );
@@ -50,6 +59,7 @@ export default function NewEventForm({
       .from('events')
       .insert({
         title,
+        event_type: eventType,
         sport: sport ? sport.toLowerCase() : null,
         description: description || null,
         event_date: new Date(date).toISOString(),
@@ -86,22 +96,40 @@ export default function NewEventForm({
         />
       </div>
 
-      <div>
-        <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
-          SPORT
-        </label>
-        <select
-          value={sport}
-          onChange={(e) => setSport(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
-        >
-          <option value="">Not sport-specific</option>
-          {sports.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+            TYPE
+          </label>
+          <select
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          >
+            {eventTypes.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+            SPORT
+          </label>
+          <select
+            value={sport}
+            onChange={(e) => setSport(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+          >
+            <option value="">Not sport-specific</option>
+            {sports.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
