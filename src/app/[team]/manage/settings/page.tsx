@@ -1,5 +1,7 @@
 import { getTeamBySlug } from '@/lib/teams';
+import { getMembership } from '@/lib/membership';
 import TeamSettingsForm from './team-settings-form';
+import DeleteTeamSection from './delete-team-section';
 
 export default async function ManageSettingsPage({
   params,
@@ -9,6 +11,8 @@ export default async function ManageSettingsPage({
   const { team: slug } = await params;
   const team = await getTeamBySlug(slug);
   if (!team) return null;
+
+  const membership = await getMembership(team.id);
 
   return (
     <div>
@@ -25,6 +29,10 @@ export default async function ManageSettingsPage({
         initialZipCode={team.zip_code ?? ''}
         initialSport={team.sport}
       />
+
+      {membership?.role === 'head_coach' && (
+        <DeleteTeamSection teamId={team.id} teamName={team.name} />
+      )}
     </div>
   );
 }
