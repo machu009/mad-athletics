@@ -2,14 +2,20 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import NewEventForm from './new-event-form';
 
-export default async function NewEventPage() {
+export default async function NewEventPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sport?: string }>;
+}) {
+  const { sport } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/sign-in?next=/events/new');
+    const next = sport ? `/events/new?sport=${sport}` : '/events/new';
+    redirect(`/sign-in?next=${encodeURIComponent(next)}`);
   }
 
   const { data: memberships } = await supabase
@@ -36,7 +42,7 @@ export default async function NewEventPage() {
       <p className="mt-2 text-sm text-[#9AA1B5]">
         A tournament, a pickup game, anything people can show up for.
       </p>
-      <NewEventForm myTeams={myTeams} />
+      <NewEventForm myTeams={myTeams} defaultSport={sport} />
     </div>
   );
 }

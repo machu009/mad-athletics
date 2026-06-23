@@ -27,12 +27,18 @@ export default async function SportLandingPage({
   }
 
   const supabase = await createClient();
+
   const { data: teams } = await supabase
     .from('teams')
     .select('id, name, slug, latitude, longitude')
     .eq('sport', slug)
     .not('latitude', 'is', null)
     .not('longitude', 'is', null);
+
+  const { count: interestCount } = await supabase
+    .from('sport_interests')
+    .select('id', { count: 'exact', head: true })
+    .eq('sport', slug);
 
   return (
     <div className="flex min-h-screen flex-col items-center px-6 py-16 text-center">
@@ -93,7 +99,40 @@ export default async function SportLandingPage({
         </Link>
       </div>
 
-      <div className="mt-12 w-full max-w-2xl text-left">
+      {/* Demand signal — aggregate only, no individual names, no contact mechanism */}
+      <div className="mt-10 w-full max-w-2xl rounded-lg border border-[#2A3550] bg-[#141E33] p-6 text-left">
+        <p className="text-sm text-[#F2A93B]">
+          {interestCount && interestCount > 0
+            ? `${interestCount} ${interestCount === 1 ? 'person' : 'people'} interested in playing ${label.toLowerCase()}`
+            : `Be the first to flag interest in ${label.toLowerCase()}`}
+        </p>
+        <p className="mt-1 text-sm text-[#9AA1B5]">
+          Want to actually get a game going? Start an open event — anyone
+          interested can find it and sign up.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-4">
+          <Link
+            href={`/events/new?sport=${slug}`}
+            className="text-sm text-[#F2A93B] hover:underline"
+          >
+            Start a {label.toLowerCase()} event →
+          </Link>
+          <Link
+            href={`/events?sport=${slug}`}
+            className="text-sm text-[#9AA1B5] hover:text-[#F2A93B] hover:underline"
+          >
+            Browse existing events →
+          </Link>
+          <Link
+            href="/profile"
+            className="text-sm text-[#9AA1B5] hover:text-[#F2A93B] hover:underline"
+          >
+            Add yourself to the interest list →
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-10 w-full max-w-2xl text-left">
         <h2
           className="text-sm tracking-[0.16em] text-[#9AA1B5]"
           style={{ fontFamily: 'var(--font-display)' }}

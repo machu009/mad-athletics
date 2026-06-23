@@ -4,11 +4,30 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+const sports = [
+  'Baseball',
+  'Softball',
+  'Basketball',
+  'Soccer',
+  'Football',
+  'Volleyball',
+  'Golf',
+];
+
 type Team = { id: string; name: string; slug: string };
 
-export default function NewEventForm({ myTeams }: { myTeams: Team[] }) {
+export default function NewEventForm({
+  myTeams,
+  defaultSport,
+}: {
+  myTeams: Team[];
+  defaultSport?: string;
+}) {
   const router = useRouter();
   const [title, setTitle] = useState('');
+  const [sport, setSport] = useState(
+    sports.find((s) => s.toLowerCase() === defaultSport?.toLowerCase()) ?? ''
+  );
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
   const [location, setLocation] = useState('');
@@ -31,6 +50,7 @@ export default function NewEventForm({ myTeams }: { myTeams: Team[] }) {
       .from('events')
       .insert({
         title,
+        sport: sport ? sport.toLowerCase() : null,
         description: description || null,
         event_date: new Date(date).toISOString(),
         location: location || null,
@@ -61,9 +81,27 @@ export default function NewEventForm({ myTeams }: { myTeams: Team[] }) {
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Saturday pickup basketball"
+          placeholder="Saturday morning round"
           className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] placeholder-[#5B6478] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
         />
+      </div>
+
+      <div>
+        <label className="text-xs tracking-[0.12em] text-[#9AA1B5]">
+          SPORT
+        </label>
+        <select
+          value={sport}
+          onChange={(e) => setSport(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-3 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+        >
+          <option value="">Not sport-specific</option>
+          {sports.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

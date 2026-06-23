@@ -1,18 +1,40 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 
-export default async function EventsPage() {
+const sports = [
+  'Baseball',
+  'Softball',
+  'Basketball',
+  'Soccer',
+  'Football',
+  'Volleyball',
+  'Golf',
+];
+
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sport?: string }>;
+}) {
+  const { sport } = await searchParams;
   const supabase = await createClient();
-  const { data: events } = await supabase
+
+  let query = supabase
     .from('events')
-    .select('id, title, event_date, location, host_team_id, teams(name, slug)')
+    .select('id, title, sport, event_date, location, host_team_id, teams(name, slug)')
     .gte('event_date', new Date().toISOString())
     .order('event_date', { ascending: true })
     .limit(50);
 
+  if (sport) {
+    query = query.eq('sport', sport);
+  }
+
+  const { data: events } = await query;
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1
           className="text-2xl font-semibold"
           style={{ fontFamily: 'var(--font-display)' }}
@@ -26,6 +48,21 @@ export default async function EventsPage() {
           Create event
         </Link>
       </div>
+
+      <form method="get" className="mt-4">
+        <select
+          name="sport"
+          defaultValue={sport ?? ''}
+          className="rounded-lg border border-[#2A3550] bg-[#141E33] px-4 py-2 text-sm text-[#F5F3EC] focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
+        >
+          <option value="">All sports</option>
+          {sports.map((s) => (
+            <option key={s} value={s.toLowerCase()}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </form>
 
       <div className="mt-8 space-y-2">
         {!events?.length ? (
@@ -45,6 +82,9 @@ export default async function EventsPage() {
                 <div>
                   <p className="text-sm">{e.title}</p>
                   <p className="text-xs text-[#9AA1B5]">
+                    {e.sport && (
+                      <span className="capitalize">{e.sport} · </span>
+                    )}
                     {host ? `Hosted by ${host.name}` : 'Open event'}
                     {e.location ? ` · ${e.location}` : ''}
                   </p>
