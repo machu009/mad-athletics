@@ -122,7 +122,7 @@ function AddPlayerForm({ onAdd }: { onAdd: (name: string) => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Player name"
-        className="flex-1 rounded-lg border border-[#2A3550] bg-transparent px-3 py-2 text-sm text-[#F5F3EC] placeholder:text-[#5B6478] focus:border-[#F2A93B] focus:outline-none"
+        className="min-w-0 flex-1 rounded-lg border border-[#2A3550] bg-transparent px-3 py-2 text-sm text-[#F5F3EC] placeholder:text-[#5B6478] focus:border-[#F2A93B] focus:outline-none"
       />
       <button
         onClick={() => {
@@ -325,7 +325,7 @@ export default function QuickGamePage({
       </div>
 
       {advancedMode && statDefs.length > 0 && (
-        <div className="mt-10 grid grid-cols-1 gap-6 text-left sm:grid-cols-2">
+        <div className="mt-10 space-y-8 text-left">
           <div className="space-y-3">
             <p className="text-xs tracking-[0.16em] text-[#9AA1B5]" style={{ fontFamily: 'var(--font-display)' }}>
               {game.team_a_name.toUpperCase()}
