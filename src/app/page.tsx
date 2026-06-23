@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import QuickGameLauncher from '@/components/QuickGameLauncher';
 
 export const metadata: Metadata = {
   title: 'Mad Athletics — free, from pickup games to full leagues',
@@ -76,6 +77,15 @@ export default function HomePage() {
           friends keeping score tonight or a league with a dozen teams
           competing all year.
         </p>
+
+        {/* quick game launcher */}
+        <p
+          className="mx-auto mt-10 text-xs tracking-[0.16em] text-[#9AA1B5]"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
+          TAP A SPORT TO START SCORING — NO SIGN-UP
+        </p>
+        <QuickGameLauncher />
       </section>
 
       {/* routing panels */}
