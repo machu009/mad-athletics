@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Mad Athletics — track every game live',
@@ -46,50 +45,9 @@ const sports = [
   'Golf',
 ];
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export default function HomePage() {
   return (
     <main className="min-h-screen">
-      {/* nav */}
-      <header className="flex items-center justify-between px-6 py-5 sm:px-10">
-        <span
-          className="text-lg font-semibold tracking-[0.18em]"
-          style={{ fontFamily: 'var(--font-display)' }}
-        >
-          MAD ATHLETICS
-        </span>
-        {user ? (
-          <div className="flex items-center gap-4">
-            <Link
-              href="/coach"
-              className="rounded-sm text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
-            >
-              Your teams
-            </Link>
-            <span className="text-sm text-[#9AA1B5]">{user.email}</span>
-            <form action="/auth/sign-out" method="post">
-              <button
-                type="submit"
-                className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
-              >
-                Sign out
-              </button>
-            </form>
-          </div>
-        ) : (
-          <Link
-            href="/sign-in"
-            className="rounded-sm px-1 text-sm text-[#C8CCD8] hover:text-[#F5F3EC] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F2A93B]"
-          >
-            Sign in
-          </Link>
-        )}
-      </header>
-
       {/* hero */}
       <section className="px-6 pb-16 pt-10 text-center sm:px-10 sm:pb-24 sm:pt-16">
         <h1
