@@ -15,6 +15,8 @@ type Player = {
   stats: Record<string, number>;
 };
 
+type Segments = { a: Record<string, number>; b: Record<string, number> };
+
 type GameState = {
   advancedMode?: boolean;
   players?: { a: Player[]; b: Player[] };
@@ -27,7 +29,9 @@ type GameState = {
   set?: number;
   setsWonA?: number;
   setsWonB?: number;
+  setScores?: Record<string, { a: number; b: number }>;
   hole?: number;
+  segments?: Segments;
   [key: string]: any;
 };
 
@@ -99,6 +103,26 @@ function halfLabel(n: number) {
   if (n <= 1) return '1st Half';
   if (n === 2) return '2nd Half';
   return 'Full Time';
+}
+
+// Which game_state field attributes a score tap to a segment, per sport.
+// Volleyball isn't included here — it uses a reset-per-set model instead (see winSet).
+function currentSegmentKey(sport: string, state: GameState): number | null {
+  switch (sport) {
+    case 'baseball':
+    case 'softball':
+      return state.inning ?? 1;
+    case 'basketball':
+      return state.period ?? 1;
+    case 'football':
+      return state.quarter ?? 1;
+    case 'soccer':
+      return state.soccerHalf ?? 1;
+    case 'golf':
+      return state.hole ?? 1;
+    default:
+      return null;
+  }
 }
 
 function TeamNameEditor({
@@ -198,6 +222,43 @@ function AddPlayerForm({ onAdd }: { onAdd: (name: string) => void }) {
   );
 }
 
+function ScoreGridTable({
+  columns,
+  rows,
+  totalLabel,
+}: {
+  columns: string[];
+  rows: { label: string; values: number[]; total: number }[];
+  totalLabel: string;
+}) {
+  return (
+    <div className="mt-6 overflow-x-auto">
+      <table className="mx-auto border-collapse text-xs">
+        <thead>
+          <tr>
+            <th className="px-2 py-1 text-left text-[#9AA1B5]" />
+            {columns.map((label, i) => (
+              <th key={i} className="px-2 py-1 text-[#9AA1B5]">{label}</th>
+            ))}
+            <th className="px-2 py-1 text-[#F2A93B]">{totalLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label} className="border-t border-[#2A3550]">
+              <td className="px-2 py-1 text-left text-[#C8CCD8]">{row.label}</td>
+              {row.values.map((v, i) => (
+                <td key={i} className="px-2 py-1 text-center text-[#F5F3EC]">{v}</td>
+              ))}
+              <td className="px-2 py-1 text-center font-semibold text-[#F2A93B]">{row.total}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function QuickGamePage({
   params,
 }: {
@@ -243,10 +304,31 @@ export default function QuickGamePage({
     setGame(data);
   }
 
+  // Every tap attributes the point to whichever inning/quarter/half/hole is
+  // currently active, so the score grid has something real to show. Volleyball
+  // is excluded — it uses a reset-per-set model in winSet() instead.
   function adjustScore(team: 'a' | 'b', delta: number) {
     if (!game) return;
-    const key = team === 'a' ? 'score_a' : 'score_b';
-    updateGame({ [key]: Math.max(0, game[key] + delta) });
+    const scoreKey = team === 'a' ? 'score_a' : 'score_b';
+    const newScore = Math.max(0, game[scoreKey] + delta);
+
+    const state = game.game_state ?? {};
+    const segKey = currentSegmentKey(game.sport, state);
+
+    if (segKey === null) {
+      updateGame({ [scoreKey]: newScore });
+      return;
+    }
+
+    const segments: Segments = state.segments ?? { a: {}, b: {} };
+    const teamSegments = { ...(segments[team] ?? {}) };
+    const k = String(segKey);
+    teamSegments[k] = Math.max(0, (teamSegments[k] ?? 0) + delta);
+
+    updateGame({
+      [scoreKey]: newScore,
+      game_state: { ...state, segments: { ...segments, [team]: teamSegments } },
+    });
   }
 
   function endGame() {
@@ -288,8 +370,6 @@ export default function QuickGamePage({
     });
   }
 
-  // Baseball/softball: tapping an out clamps 0-3; hitting 3 resets to 0 and
-  // flips the half (bottom -> top advances the inning number).
   function advanceOuts(delta: number) {
     if (!game) return;
     const state = game.game_state ?? {};
@@ -303,7 +383,7 @@ export default function QuickGamePage({
         half = 'bottom';
       } else {
         half = 'top';
-        inning = (typeof inning === 'number' ? inning : 1) + 1;
+        inning = inning + 1;
       }
     } else if (outs < 0) {
       outs = 0;
@@ -312,7 +392,6 @@ export default function QuickGamePage({
     updateGame({ game_state: { ...state, outs, inning, half } });
   }
 
-  // Generic +1 advance for fields that just count up: period, quarter, half, hole.
   function advanceField(field: keyof GameState, max?: number) {
     if (!game) return;
     const state = game.game_state ?? {};
@@ -321,15 +400,25 @@ export default function QuickGamePage({
     updateGame({ game_state: { ...state, [field]: current + 1 } });
   }
 
+  // Archives the just-finished set's live score into setScores, then resets
+  // the live score to 0-0 for the next set — matches how volleyball actually
+  // works (each set's points reset; only the sets-won tally is cumulative).
   function winSet(team: 'a' | 'b') {
     if (!game) return;
     const state = game.game_state ?? {};
-    const key = team === 'a' ? 'setsWonA' : 'setsWonB';
+    const setNumber = state.set ?? 1;
+    const setScores = { ...(state.setScores ?? {}) };
+    setScores[String(setNumber)] = { a: game.score_a, b: game.score_b };
+
+    const wonKey = team === 'a' ? 'setsWonA' : 'setsWonB';
     updateGame({
+      score_a: 0,
+      score_b: 0,
       game_state: {
         ...state,
-        [key]: (state[key] ?? 0) + 1,
-        set: (state.set ?? 1) + 1,
+        [wonKey]: (state[wonKey] ?? 0) + 1,
+        set: setNumber + 1,
+        setScores,
       },
     });
   }
@@ -347,6 +436,7 @@ export default function QuickGamePage({
   const playersA = game.game_state?.players?.a ?? [];
   const playersB = game.game_state?.players?.b ?? [];
   const state = game.game_state ?? {};
+  const segments: Segments = state.segments ?? { a: {}, b: {} };
 
   function renderProgress() {
     switch (game!.sport) {
@@ -358,7 +448,7 @@ export default function QuickGamePage({
         return (
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm text-[#C8CCD8]">
-              {half} {ordinal(typeof inning === 'number' ? inning : 1)}
+              {half} {ordinal(inning)}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-xs tracking-[0.16em] text-[#9AA1B5]">OUTS</span>
@@ -475,6 +565,94 @@ export default function QuickGamePage({
     }
   }
 
+  function maxSegmentKey(fallback: number) {
+    const aKeys = Object.keys(segments.a ?? {}).map(Number);
+    const bKeys = Object.keys(segments.b ?? {}).map(Number);
+    return Math.max(fallback, ...aKeys, ...bKeys);
+  }
+
+  function renderScoreGrid() {
+    if (game!.sport === 'baseball' || game!.sport === 'softball') {
+      const maxInning = maxSegmentKey(state.inning ?? 1);
+      const innings = Array.from({ length: maxInning }, (_, i) => i + 1);
+      return (
+        <ScoreGridTable
+          columns={innings.map((n) => String(n))}
+          rows={[
+            { label: game!.team_a_name, values: innings.map((n) => segments.a?.[n] ?? 0), total: game!.score_a },
+            { label: game!.team_b_name, values: innings.map((n) => segments.b?.[n] ?? 0), total: game!.score_b },
+          ]}
+          totalLabel="R"
+        />
+      );
+    }
+
+    if (game!.sport === 'basketball' || game!.sport === 'football') {
+      const current = game!.sport === 'basketball' ? state.period ?? 1 : state.quarter ?? 1;
+      const maxPeriod = maxSegmentKey(current);
+      const periods = Array.from({ length: maxPeriod }, (_, i) => i + 1);
+      return (
+        <ScoreGridTable
+          columns={periods.map((n) => periodLabel(n))}
+          rows={[
+            { label: game!.team_a_name, values: periods.map((n) => segments.a?.[n] ?? 0), total: game!.score_a },
+            { label: game!.team_b_name, values: periods.map((n) => segments.b?.[n] ?? 0), total: game!.score_b },
+          ]}
+          totalLabel="Total"
+        />
+      );
+    }
+
+    if (game!.sport === 'soccer') {
+      return (
+        <ScoreGridTable
+          columns={['1st', '2nd']}
+          rows={[
+            { label: game!.team_a_name, values: [1, 2].map((n) => segments.a?.[n] ?? 0), total: game!.score_a },
+            { label: game!.team_b_name, values: [1, 2].map((n) => segments.b?.[n] ?? 0), total: game!.score_b },
+          ]}
+          totalLabel="Total"
+        />
+      );
+    }
+
+    if (game!.sport === 'golf') {
+      const maxHole = maxSegmentKey(state.hole ?? 1);
+      const holes = Array.from({ length: maxHole }, (_, i) => i + 1);
+      return (
+        <ScoreGridTable
+          columns={holes.map((n) => String(n))}
+          rows={[
+            { label: game!.team_a_name, values: holes.map((n) => segments.a?.[n] ?? 0), total: game!.score_a },
+            { label: game!.team_b_name, values: holes.map((n) => segments.b?.[n] ?? 0), total: game!.score_b },
+          ]}
+          totalLabel="Total"
+        />
+      );
+    }
+
+    if (game!.sport === 'volleyball') {
+      const setScores = state.setScores ?? {};
+      const finishedSets = Object.keys(setScores).map(Number).sort((a, b) => a - b);
+      const currentSet = state.set ?? 1;
+      const columns = [...finishedSets.map((n) => `Set ${n}`), `Set ${currentSet} (live)`];
+      const aValues = [...finishedSets.map((n) => setScores[String(n)]?.a ?? 0), game!.score_a];
+      const bValues = [...finishedSets.map((n) => setScores[String(n)]?.b ?? 0), game!.score_b];
+      return (
+        <ScoreGridTable
+          columns={columns}
+          rows={[
+            { label: game!.team_a_name, values: aValues, total: state.setsWonA ?? 0 },
+            { label: game!.team_b_name, values: bValues, total: state.setsWonB ?? 0 },
+          ]}
+          totalLabel="Sets"
+        />
+      );
+    }
+
+    return null;
+  }
+
   return (
     <div className="mx-auto max-w-md px-6 py-12 text-center">
       <p
@@ -558,6 +736,8 @@ export default function QuickGamePage({
           )}
         </div>
       </div>
+
+      {renderScoreGrid()}
 
       {advancedMode && statDefs.length > 0 && (
         <div className="mt-10 space-y-8 text-left">
