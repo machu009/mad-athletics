@@ -54,7 +54,7 @@ function defaultStateForSport(sport: string) {
     case 'basketball':
       return { ...base, period: 1, periodLabel: 'Q1' };
     case 'soccer':
-      return { ...base, half: 1, minute: 0 };
+      return { ...base, soccerHalf: 1, minute: 0 };
     case 'football':
       return { ...base, quarter: 1 };
     case 'volleyball':

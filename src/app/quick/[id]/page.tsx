@@ -15,6 +15,22 @@ type Player = {
   stats: Record<string, number>;
 };
 
+type GameState = {
+  advancedMode?: boolean;
+  players?: { a: Player[]; b: Player[] };
+  inning?: number;
+  half?: 'top' | 'bottom';
+  soccerHalf?: number;
+  outs?: number;
+  period?: number;
+  quarter?: number;
+  set?: number;
+  setsWonA?: number;
+  setsWonB?: number;
+  hole?: number;
+  [key: string]: any;
+};
+
 type QuickGame = {
   id: string;
   sport: string;
@@ -22,25 +38,68 @@ type QuickGame = {
   team_b_name: string;
   score_a: number;
   score_b: number;
-  game_state: {
-    advancedMode?: boolean;
-    players?: { a: Player[]; b: Player[] };
-    [key: string]: any;
-  };
+  game_state: GameState;
   status: string;
 };
 
 // Matches the stat language already on the homepage ("hits and runs for
 // baseball, points and rebounds for basketball, whatever your sport tracks").
 const STAT_DEFS: Record<string, { key: string; label: string }[]> = {
-  baseball: [{ key: 'hits', label: 'Hits' }, { key: 'runs', label: 'Runs' }],
-  softball: [{ key: 'hits', label: 'Hits' }, { key: 'runs', label: 'Runs' }],
-  basketball: [{ key: 'points', label: 'Points' }, { key: 'rebounds', label: 'Rebounds' }],
-  soccer: [{ key: 'goals', label: 'Goals' }, { key: 'assists', label: 'Assists' }],
-  football: [{ key: 'touchdowns', label: 'TDs' }, { key: 'tackles', label: 'Tackles' }],
-  volleyball: [{ key: 'kills', label: 'Kills' }, { key: 'blocks', label: 'Blocks' }],
-  golf: [{ key: 'strokes', label: 'Strokes' }],
+  baseball: [
+    { key: 'hits', label: 'Hits' },
+    { key: 'runs', label: 'Runs' },
+    { key: 'strikeouts', label: 'Strikeouts' },
+  ],
+  softball: [
+    { key: 'hits', label: 'Hits' },
+    { key: 'runs', label: 'Runs' },
+    { key: 'strikeouts', label: 'Strikeouts' },
+  ],
+  basketball: [
+    { key: 'points', label: 'Points' },
+    { key: 'rebounds', label: 'Rebounds' },
+    { key: 'assists', label: 'Assists' },
+  ],
+  soccer: [
+    { key: 'goals', label: 'Goals' },
+    { key: 'assists', label: 'Assists' },
+  ],
+  football: [
+    { key: 'touchdowns', label: 'TDs' },
+    { key: 'tackles', label: 'Tackles' },
+  ],
+  volleyball: [
+    { key: 'kills', label: 'Kills' },
+    { key: 'blocks', label: 'Blocks' },
+    { key: 'aces', label: 'Aces' },
+  ],
+  golf: [
+    { key: 'strokes', label: 'Strokes' },
+    { key: 'putts', label: 'Putts' },
+  ],
 };
+
+function ordinal(n: number) {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+function periodLabel(n: number) {
+  if (n <= 4) return `Q${n}`;
+  return n === 5 ? 'OT' : `OT${n - 4}`;
+}
+
+function halfLabel(n: number) {
+  if (n <= 1) return '1st Half';
+  if (n === 2) return '2nd Half';
+  return 'Full Time';
+}
 
 function TeamNameEditor({
   name,
@@ -229,6 +288,52 @@ export default function QuickGamePage({
     });
   }
 
+  // Baseball/softball: tapping an out clamps 0-3; hitting 3 resets to 0 and
+  // flips the half (bottom -> top advances the inning number).
+  function advanceOuts(delta: number) {
+    if (!game) return;
+    const state = game.game_state ?? {};
+    let outs = (state.outs ?? 0) + delta;
+    let inning = state.inning ?? 1;
+    let half = state.half ?? 'top';
+
+    if (outs >= 3) {
+      outs = 0;
+      if (half === 'top') {
+        half = 'bottom';
+      } else {
+        half = 'top';
+        inning = (typeof inning === 'number' ? inning : 1) + 1;
+      }
+    } else if (outs < 0) {
+      outs = 0;
+    }
+
+    updateGame({ game_state: { ...state, outs, inning, half } });
+  }
+
+  // Generic +1 advance for fields that just count up: period, quarter, half, hole.
+  function advanceField(field: keyof GameState, max?: number) {
+    if (!game) return;
+    const state = game.game_state ?? {};
+    const current = (state[field] as number) ?? 1;
+    if (max && current >= max) return;
+    updateGame({ game_state: { ...state, [field]: current + 1 } });
+  }
+
+  function winSet(team: 'a' | 'b') {
+    if (!game) return;
+    const state = game.game_state ?? {};
+    const key = team === 'a' ? 'setsWonA' : 'setsWonB';
+    updateGame({
+      game_state: {
+        ...state,
+        [key]: (state[key] ?? 0) + 1,
+        set: (state.set ?? 1) + 1,
+      },
+    });
+  }
+
   if (!game) {
     return (
       <div className="py-16 text-center text-sm text-[#9AA1B5]">
@@ -241,6 +346,134 @@ export default function QuickGamePage({
   const advancedMode = !!game.game_state?.advancedMode;
   const playersA = game.game_state?.players?.a ?? [];
   const playersB = game.game_state?.players?.b ?? [];
+  const state = game.game_state ?? {};
+
+  function renderProgress() {
+    switch (game!.sport) {
+      case 'baseball':
+      case 'softball': {
+        const inning = state.inning ?? 1;
+        const half = state.half === 'bottom' ? 'Bottom' : 'Top';
+        const outs = state.outs ?? 0;
+        return (
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <p className="text-sm text-[#C8CCD8]">
+              {half} {ordinal(typeof inning === 'number' ? inning : 1)}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs tracking-[0.16em] text-[#9AA1B5]">OUTS</span>
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className={`h-3 w-3 rounded-full border border-[#2A3550] ${
+                    i < outs ? 'bg-[#F2A93B]' : 'bg-transparent'
+                  }`}
+                />
+              ))}
+            </div>
+            {isOwner && (
+              <div className="mt-1 flex gap-2">
+                <button
+                  onClick={() => advanceOuts(-1)}
+                  className="rounded-full border border-[#2A3550] px-3 py-1 text-xs text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B]"
+                >
+                  − Out
+                </button>
+                <button
+                  onClick={() => advanceOuts(1)}
+                  className="rounded-full border border-[#2A3550] px-3 py-1 text-xs text-[#C8CCD8] transition-colors hover:border-[#F2A93B] hover:text-[#F2A93B]"
+                >
+                  + Out
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }
+      case 'basketball':
+        return (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-[#C8CCD8]">{periodLabel(state.period ?? 1)}</p>
+            {isOwner && (
+              <button
+                onClick={() => advanceField('period')}
+                className="mt-2 text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+              >
+                Next quarter →
+              </button>
+            )}
+          </div>
+        );
+      case 'football':
+        return (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-[#C8CCD8]">{periodLabel(state.quarter ?? 1)}</p>
+            {isOwner && (
+              <button
+                onClick={() => advanceField('quarter')}
+                className="mt-2 text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+              >
+                Next quarter →
+              </button>
+            )}
+          </div>
+        );
+      case 'soccer':
+        return (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-[#C8CCD8]">{halfLabel(state.soccerHalf ?? 1)}</p>
+            {isOwner && (state.soccerHalf ?? 1) < 2 && (
+              <button
+                onClick={() => advanceField('soccerHalf', 2)}
+                className="mt-2 text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+              >
+                Start 2nd half →
+              </button>
+            )}
+          </div>
+        );
+      case 'volleyball':
+        return (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-[#C8CCD8]">
+              Set {state.set ?? 1} • Sets: {state.setsWonA ?? 0}–{state.setsWonB ?? 0}
+            </p>
+            {isOwner && (
+              <div className="mt-2 flex justify-center gap-3">
+                <button
+                  onClick={() => winSet('a')}
+                  className="text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+                >
+                  {game!.team_a_name} won set →
+                </button>
+                <button
+                  onClick={() => winSet('b')}
+                  className="text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+                >
+                  {game!.team_b_name} won set →
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      case 'golf':
+        return (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-[#C8CCD8]">Hole {state.hole ?? 1} of 18</p>
+            {isOwner && (state.hole ?? 1) < 18 && (
+              <button
+                onClick={() => advanceField('hole', 18)}
+                className="mt-2 text-xs text-[#9AA1B5] underline transition-colors hover:text-[#F2A93B]"
+              >
+                Next hole →
+              </button>
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
 
   return (
     <div className="mx-auto max-w-md px-6 py-12 text-center">
@@ -250,6 +483,8 @@ export default function QuickGamePage({
       >
         {game.sport.toUpperCase()}
       </p>
+
+      {renderProgress()}
 
       {isOwner && statDefs.length > 0 && (
         <button
